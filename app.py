@@ -52,37 +52,15 @@ st.markdown("""
 
 # ==========================================
 
-# 2. Cabeçalho
-st.title("MAGNERA")
-st.caption("NONWOVEN OPTIMIZATION ENGINE")
-st.markdown("---")
+# 2. Cabeçalho com Logo
+# Criamos colunas para controlar o tamanho da logo na tela (para não ficar gigante)
+col_logo, col_vazia = st.columns([1, 2]) 
+with col_logo:
+    # Chama o arquivo da imagem que subimos no GitHub
+    st.image("logo.png", width=380)
 
-# 3. Bloco Superior: Especificações e Restrições
-col_esq, col_dir = st.columns(2)
-
-with col_esq:
-    st.subheader("ESPECIFICAÇÕES DO MATERIAL")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.selectbox("MÁQUINA", ["SJP07", "SJP08"])
-        st.selectbox("CALANDRA", ["OVAL", "DIAMANTE"])
-    with c2:
-        st.selectbox("TECNOLOGIA", ["SMS", "SSMMS"])
-        st.number_input("GRAMATURA (GSM)", value=11)
-    with c3:
-        st.selectbox("SURFACTANTE", ["HFO", "ZEB"])
-        st.number_input("METRAGEM LINEAR (M)", value=13500)
-
-with col_dir:
-    st.subheader("RESTRIÇÕES DE CORTE")
-    c4, c5 = st.columns(2)
-    with c4:
-        st.number_input("LARGURA MASTER (MM)", value=4130)
-        st.number_input("QTDE_FACAS", value=45)
-    with c5:
-        st.number_input("MAX_SETUPS", value=10)
-        st.number_input("META_OTIF", value=1.05)
-
+# Um subtítulo elegante abaixo da logo
+st.markdown("<h4 style='color: #984cfc; font-weight: normal;'>NONWOVEN OPTIMIZATION ENGINE</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
 # 4. Bloco do Meio: Regras de Negócio
