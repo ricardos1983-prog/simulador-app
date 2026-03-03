@@ -9,22 +9,47 @@ import pandas as pd
 st.set_page_config(page_title="MAGNERA - Otimizador", layout="wide")
 
 # ==========================================
-# INJEÇÃO DE ESTILO (BRAND GUIDELINES)
+# INJEÇÃO DE ESTILO WEB (MAGNERA.COM)
 # ==========================================
 st.markdown("""
 <style>
-    /* Pinta os títulos principais e subtítulos de Lilac */
-    h1, h2, h3 {
-        color: #984cfc !important; 
+    /* Título principal em Indigo super escuro e forte */
+    h1 {
+        color: #110b4f !important; 
+        font-weight: 800 !important;
     }
-    /* Deixa o botão Processar mais arredondado e com texto forte */
+    
+    /* Subtítulos em Lilac corporativo (conforme Brand Guidelines) */
+    h2, h3 {
+        color: #984cfc !important; 
+        font-weight: 700 !important;
+    }
+    
+    /* Botão de Ação (CTA) idêntico aos botões web da Magnera (Ruby) */
     .stButton>button {
+        background-color: #ed1b52 !important;
+        color: #ffffff !important;
         font-weight: bold;
-        border-radius: 8px;
+        border-radius: 30px; /* Deixa o botão mais arredondado e elegante */
         border: none;
+        padding: 10px 24px;
+        transition: all 0.3s ease; /* Efeito de transição suave */
+    }
+    
+    /* Efeito ao passar o mouse sobre o botão (Hover) */
+    .stButton>button:hover {
+        background-color: #c91443 !important; /* Ruby levemente mais escuro */
+        box-shadow: 0 4px 12px rgba(237, 27, 82, 0.4); /* Sombra Ruby */
+    }
+    
+    /* Suaviza as bordas das caixas de texto e tabelas para um look moderno */
+    div[data-baseweb="select"] > div, input[type="number"] {
+        border-radius: 6px !important;
+        border-color: #ced4da !important; /* Cor Gray 2 do manual */
     }
 </style>
 """, unsafe_allow_html=True)
+
 # ==========================================
 
 # 2. Cabeçalho
