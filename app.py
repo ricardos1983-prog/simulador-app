@@ -56,10 +56,10 @@ with col_logo:
     st.image("logo.png", width=380)
 
 # 2º: O Título Principal
-st.markdown("<h1>SIMULADOR - conjugação de esquemas de Corte</h1>", unsafe_allow_html=True)
+st.markdown("<h1>SIMULADOR</h1>", unsafe_allow_html=True)
 
 # 3º: O Subtítulo
-st.markdown("<h4 style='color: #984cfc; font-weight: normal; margin-top: -10px;'>NONWOVEN OPTIMIZATION ENGINE</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='color: #984cfc; font-weight: normal; margin-top: -10px;'> CONJUGAÇÃO DE ESQUEMAS DE CORTE</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
 # 4. Bloco do Meio: Regras de Negócio
