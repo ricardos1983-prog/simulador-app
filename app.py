@@ -19,14 +19,14 @@ with col_esq:
     st.subheader("ESPECIFICAÇÕES DO MATERIAL")
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.selectbox("MÁQUINA", ["SJP07", "SJP08"])
-        st.selectbox("CALANDRA", ["OVAL", "DIAMANTE"])
+        st.selectbox("MÁQUINA", ["PAL01","PAL02","SJP05","SJP06","SJP07""SJP08", "SJP09"])
+        st.selectbox("CALANDRA", ["OVAL","ESTRELA"])
     with c2:
-        st.selectbox("TECNOLOGIA", ["SMS", "SSMMS"])
+        st.selectbox("TECNOLOGIA", ["SMS", "SSS"])
         st.number_input("GRAMATURA (GSM)", value=11)
     with c3:
-        st.selectbox("SURFACTANTE", ["HFO", "ZEB"])
-        st.number_input("METRAGEM LINEAR (M)", value=13500)
+        st.selectbox("SURFACTANTE", ["HFO","HFL","ZEB"])
+        st.number_input("METRAGEM LINEAR (M)", value=13500, step=100)
 
 with col_dir:
     st.subheader("RESTRIÇÕES DE CORTE")
@@ -52,7 +52,7 @@ with col_r1:
 with col_r2:
     st.slider("PREMIO_AVANCO", min_value=0, max_value=15000, value=5000, step=100)
     st.slider("CUSTO_TROCA_FACA", min_value=0, max_value=15000, value=2000, step=100)
-    st.slider("CUSTO_FALTA_PEDIDO", min_value=0, max_value=20000, value=15000, step=100)
+    st.slider("CUSTO_FALTA_PEDIDO", min_value=0, max_value=15000, value=15000, step=100)
 
 st.markdown("---")
 
