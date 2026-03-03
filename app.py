@@ -1,7 +1,4 @@
 import streamlit as st
-
-st.title("SIMULADOR - conjugação de esquemas de Corte")
-
 import streamlit as st
 import pandas as pd
 
