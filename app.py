@@ -52,15 +52,17 @@ st.markdown("""
 
 # ==========================================
 
-# 2. Cabeçalho com Logo
-# Criamos colunas para controlar o tamanho da logo na tela (para não ficar gigante)
+# 2. Cabeçalho com Logo (Ordem Invertida)
+# 1º: A Logo no topo
 col_logo, col_vazia = st.columns([1, 2]) 
 with col_logo:
-    # Chama o arquivo da imagem que subimos no GitHub
     st.image("logo.png", width=380)
 
-# Um subtítulo elegante abaixo da logo
-st.markdown("<h4 style='color: #984cfc; font-weight: normal;'>NONWOVEN OPTIMIZATION ENGINE</h4>", unsafe_allow_html=True)
+# 2º: O Título Principal
+st.markdown("<h1>SIMULADOR - conjugação de esquemas de Corte</h1>", unsafe_allow_html=True)
+
+# 3º: O Subtítulo
+st.markdown("<h4 style='color: #984cfc; font-weight: normal; margin-top: -10px;'>NONWOVEN OPTIMIZATION ENGINE</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
 # 4. Bloco do Meio: Regras de Negócio
