@@ -78,28 +78,6 @@ def safe_num(val, fallback=0):
 
 K_VOLUME_EXTRUSAO = 1_250_000
 
-  # ── DIAGNÓSTICO DE REGRAS ─────────────────────────────────────────────────
-    st.markdown('<div class="section-title">⚙️ Diagnóstico de Regras de Negócio</div>', unsafe_allow_html=True)
-    pct_over = (r["OTIF_MAX"] - 1.0) * 100
-    str_setup = "BAIXA — Prioridade: Reduzir SLU" if r["L2_SETUPS"] < 3000 else "ALTA — Prioridade: OEE / Evitar paradas"
-    str_estoque = "FLEXÍVEL — Gera sobras para salvar SLU" if r["L3_OVER"] <= 5 else "RÍGIDA — Evita sobras a todo custo"
-    str_falta = "PERMITIDA — Pode entregar a menos" if r["CUSTO_FALTA"] <= 10 else "PROIBIDA — Força In-Full de 100%"
-    zeb_str = f"ZEBRADO ({r['S']})" if r["IS_ZEB"] else f"HOMOGÊNEO ({r['S']})"
-
-    st.markdown(f"""
-    <div class="info-box">
-    <b>Máquina:</b> {r["M"]} | {r["T"]} | {r["S"]} | {r["C"]} &nbsp;|&nbsp;
-    <b>LU Nominal:</b> {r["LU_NOMINAL"]:.1f} mm → LU Max: {r["LU_MAX"]:.1f} mm &nbsp;|&nbsp;
-    <b>Pool minerado:</b> {r["pool_size"]} esquemas<br>
-    <b>Extrusão:</b> {zeb_str} &nbsp;|&nbsp;
-    <b>RJ máx/campanha:</b> {r["RUNS_MAX_POR_RJ"]} tiradas &nbsp;|&nbsp;
-    <b>Mín. tiradas/setup:</b> {r["MIN_RUNS_SETUP"]} ({r["SETUP_MIN_PCT"]}%)<br>
-    <b>Troca Faca:</b> {str_setup}<br>
-    <b>Estoque:</b> {str_estoque} — tolerância {pct_over:.1f}% overstock<br>
-    <b>Faltas:</b> {str_falta}
-    </div>
-    """, unsafe_allow_html=True)
-
 # ─────────────────────────────────────────────
 # MOTOR DE OTIMIZAÇÃO — VERSÃO V10 COMPLETA
 # ─────────────────────────────────────────────
@@ -122,10 +100,10 @@ def run_optimization(df_config, df_pedidos_raw, df_lu, df_arr):
     MAX_SETUPS = int(config.get("Max_Setups", 10))
     MAX_LARG_ESQUEMA = int(config.get("Max_Larguras_Esquema", 2))
     L_MIN_FATOR = float(config.get("Fator_LU_Minima", 0.9))
-    L1_TIRADAS  = float(config.get("Custo_por_Tirada",   config.get("Lambda_Tiradas", 0)))
-    L2_SETUPS   = float(config.get("Custo_Troca_Faca",   config.get("Lambda_Setups",  10)))
-    L3_OVER     = float(config.get("Custo_Estoque_Parado", config.get("Lambda_Excesso", 10)))
-    PREMIO_AVANCO = float(config.get("Custo_Exceder_LU",  config.get("Premio_Avanco", 15)))
+    L1_TIRADAS  = float(config.get("Custo_por_Tirada",   config.get("Lambda_Tiradas", 50)))
+    L2_SETUPS   = float(config.get("Custo_Troca_Faca",   config.get("Lambda_Setups",  8000)))
+    L3_OVER     = float(config.get("Custo_Estoque_Parado", config.get("Lambda_Excesso", 5)))
+    PREMIO_AVANCO = float(config.get("Bonus_Engenharia",  config.get("Premio_Avanco", 15)))
     CUSTO_FALTA = float(config.get("Custo_Falta_Pedido", 50.0))
     SETUP_MIN_PCT = float(config.get("Setup_Min_Eixo_Pct", 0.0))
     TOL_VAL    = float(config.get("Tolerancia_LU", -0.30))
@@ -408,6 +386,9 @@ _defaults = {
     "result":    None,
     "simulated": False,
     "orders": [
+        {"id": "1", "largura": 235, "kg": 6000.0},
+        {"id": "2", "largura": 270, "kg": 10000.0},
+        {"id": "3", "largura": 400, "kg": 8500.0},
     ],
 }
 for _k, _v in _defaults.items():
@@ -604,10 +585,10 @@ st.markdown('<div class="section-title">⚙️ Especificações do Material</div
 st.markdown('<div class="param-box">', unsafe_allow_html=True)
 st.markdown('<div class="param-box-title">Identificação da Máquina</div>', unsafe_allow_html=True)
 _c1, _c2, _c3, _c4 = st.columns(4)
-machine    = _c1.selectbox('Máquina',     ['PAL01','PAL02','SJP05','SJP06','SJP07','SJP08','SJP09'], key='machine')
-technology = _c2.selectbox('Tecnologia',  ['SMS','SSS'],  key='technology')
-surfactant = _c3.selectbox('Surfactante', ['HFO','HFL','ZEB'],  key='surfactant')
-calender   = _c4.selectbox('Calandra',    ['OVAL','ESTRELA'], key='calender')
+machine    = _c1.selectbox('Máquina',     ['SJP07','SJP08','SJP09','SJP10'], key='machine')
+technology = _c2.selectbox('Tecnologia',  ['SMS','SMMS','SS','SSS','SSMS'],  key='technology')
+surfactant = _c3.selectbox('Surfactante', ['HFO','DBO','SBO','ZEB','NONE'],  key='surfactant')
+calender   = _c4.selectbox('Calandra',    ['OVAL','DIAMOND','FLAT','MICRO'], key='calender')
 st.markdown('</div>', unsafe_allow_html=True)
 
 _cm1, _cm2 = st.columns(2)
@@ -615,8 +596,8 @@ with _cm1:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
     st.markdown('<div class="param-box-title">Material</div>', unsafe_allow_html=True)
     _mc1, _mc2 = st.columns(2)
-    grammage      = _mc1.number_input('Gramatura (g/m²)', value=0.0, step=0.5,   format='%.1f', min_value=1.0)
-    linear_meters = _mc2.number_input('Metragem (m)',     value=0, step=100,  min_value=100)
+    grammage      = _mc1.number_input('Gramatura (g/m²)', value=11.0, step=0.5,   format='%.1f', min_value=1.0)
+    linear_meters = _mc2.number_input('Metragem (m)',     value=13500, step=100,  min_value=100)
     st.markdown('</div>', unsafe_allow_html=True)
 with _cm2:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
@@ -633,7 +614,7 @@ with _rc1:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
     st.markdown('<div class="param-box-title">Corte Físico</div>', unsafe_allow_html=True)
     _rr1, _rr2, _rr3 = st.columns(3)
-    max_facas    = _rr1.number_input('Qtde Facas',           value=40,    step=1,   min_value=1)
+    max_facas    = _rr1.number_input('Qtde Facas',           value=8,    step=1,   min_value=1)
     max_larg_esq = _rr2.number_input('Max Larguras/Esquema', value=2,    step=1,   min_value=1, max_value=5)
     diff_limit   = _rr3.number_input('Dif. Mín. Larg. (mm)', value=30.0, step=5.0, min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -644,20 +625,44 @@ with _rc2:
     _rs1, _rs2, _rs3 = st.columns(3)
     meta_otif     = _rs1.number_input('Meta OTIF (%)',       value=101.0, step=0.5,  format='%.1f', min_value=100.0, max_value=115.0)
     max_setups    = _rs2.number_input('Max Setups',          value=10,    step=1,    min_value=1)
-    setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=70.0,  step=1.0,  format='%.1f', min_value=0.0)
+    setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=0.0,  step=1.0,  format='%.1f', min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="param-box">', unsafe_allow_html=True)
 st.markdown('<div class="param-box-title">Custos & Penalidades</div>', unsafe_allow_html=True)
 _cp1, _cp2, _cp3, _cp4, _cp5 = st.columns(5)
-custo_tirada  = _cp1.number_input('Custo/Tirada',      value=0,   step=50.0)
-custo_setup   = _cp2.number_input('Custo Troca Faca',  value=0, step=50.0)
-custo_estoque = _cp3.number_input('Custo Estoque',     value=0,    step=50.0)
-custo_falta   = _cp4.number_input('Custo Falta',       value=500.0,   step=50.0)
-bonus_eng     = _cp5.number_input('Bônus Engenharia',  value=0,   step=50.0)
+custo_tirada  = _cp1.number_input('Custo/Tirada',      value=50.0,   step=10.0)
+custo_setup   = _cp2.number_input('Custo Troca Faca',  value=8000.0, step=500.0)
+custo_estoque = _cp3.number_input('Custo Estoque',     value=5.0,    step=1.0)
+custo_falta   = _cp4.number_input('Custo Falta',       value=50.0,   step=5.0)
+bonus_eng     = _cp5.number_input('Bônus Engenharia',  value=15.0,   step=1.0)
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
+# Diagnóstico de Regras — exibido após otimização
+if st.session_state.simulated and st.session_state.result:
+    _r = st.session_state.result
+    _pct_over    = (_r['OTIF_MAX'] - 1.0) * 100
+    _str_setup   = 'BAIXA - Prioridade: Reduzir SLU' if _r['L2_SETUPS'] < 3000 else 'ALTA - Prioridade: OEE / Evitar paradas'
+    _str_estoque = 'FLEXIVEL - Gera sobras para salvar SLU' if _r['L3_OVER'] <= 5 else 'RIGIDA - Evita sobras a todo custo'
+    _str_falta   = 'PERMITIDA - Pode entregar a menos' if _r['CUSTO_FALTA'] <= 10 else 'PROIBIDA - Forca In-Full de 100%'
+    _zeb_str     = f"ZEBRADO ({_r['S']})" if _r['IS_ZEB'] else f"HOMOGENEO ({_r['S']})"
+    st.markdown('<div class="section-title">Diagnostico de Regras de Negocio</div>', unsafe_allow_html=True)
+    _diag = (
+        '<div class="info-box">'
+        f'<b>Maquina:</b> {_r["M"]} | {_r["T"]} | {_r["S"]} | {_r["C"]} &nbsp;|&nbsp;'
+        f'<b>LU Nominal:</b> {_r["LU_NOMINAL"]:.1f}mm &rarr; LU Max: {_r["LU_MAX"]:.1f}mm &nbsp;|&nbsp;'
+        f'<b>Pool:</b> {_r["pool_size"]} esquemas<br>'
+        f'<b>Extrusao:</b> {_zeb_str} &nbsp;|&nbsp;'
+        f'<b>RJ max/campanha:</b> {_r["RUNS_MAX_POR_RJ"]} tiradas &nbsp;|&nbsp;'
+        f'<b>Min tiradas/setup:</b> {_r["MIN_RUNS_SETUP"]} ({_r["SETUP_MIN_PCT"]}%)<br>'
+        f'<b>Troca Faca:</b> {_str_setup}<br>'
+        f'<b>Estoque:</b> {_str_estoque} - tolerancia {_pct_over:.1f}% overstock<br>'
+        f'<b>Faltas:</b> {_str_falta}'
+        '</div>'
+    )
+    st.markdown(_diag, unsafe_allow_html=True)
+    st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
 st.markdown('<div class="section-title">📋 Demandas de Venda</div>', unsafe_allow_html=True)
 
@@ -683,7 +688,7 @@ for _did in _to_delete:
 
 if st.button('＋ Adicionar Largura'):
     _new_id = str(max((int(o['id']) for o in st.session_state.orders), default=0) + 1)
-    st.session_state.orders.append({'id': _new_id, 'largura': 0, 'kg': 0.0})
+    st.session_state.orders.append({'id': _new_id, 'largura': 300, 'kg': 1000.0})
     st.rerun()
 
 st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
@@ -948,9 +953,7 @@ if st.session_state.simulated and st.session_state.result:
     df_bal = pd.DataFrame(rows)
     st.write(df_bal.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-    st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
-
-      # ── FOOTER ────────────────────────────────────────────────────────────────
+    # ── FOOTER ────────────────────────────────────────────────────────────────
     elapsed_str = f"{r.get('elapsed', 0):.2f}s"
     st.markdown(f"""
     <div style="text-align:center;padding:40px 0 20px;">
