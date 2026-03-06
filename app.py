@@ -793,7 +793,6 @@ if st.session_state.simulated and st.session_state.result:
     )
     st.markdown(_k1, unsafe_allow_html=True)
 
-    # segunda linha de KPIs
     _k2 = (
         '<div class="kpi-grid">'
         '<div class="kpi-card" style="border-top-color:#64748b">'
@@ -818,148 +817,40 @@ if st.session_state.simulated and st.session_state.result:
 
     st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
-    # ── PLANO DE CORTE (Cards) ────────────────────────────────────────────────
-    st.markdown('<div class="section-title">Plano de Corte — Esquemas Ativos</div>', unsafe_allow_html=True)
-
-    cols_combo = st.columns(2)
-    for ci, setup in enumerate(r["plano"]):
-        with cols_combo[ci % 2]:
-            slu = setup["slu"]
-            if slu < -0.001:
-                badge = f'<span class="slu-neg-badge">SLU {slu:.2f}% ⚠️ Avanço</span>'
-            elif slu > 1.3:
-                badge = f'<span class="waste-badge-red">SLU {slu:.2f}%</span>'
-            elif slu > 1.0:
-                badge = f'<span class="waste-badge-orange">SLU {slu:.2f}%</span>'
-            else:
-                badge = f'<span class="waste-badge-green">SLU {slu:.2f}%</span>'
-
-            # Mapa visual de corte
-            LU_NOM = r["LU_NOMINAL"]
-            waste_mm = round(LU_NOM - setup["l_real"], 2)
-            map_html = '<div class="cut-map">'
-            for k, w in enumerate(setup["widths"]):
-                flex = w * setup["rollCounts"][k]
-                map_html += f'<div class="cut-segment" style="flex:{flex}"><span class="cut-label">{int(w)}</span><span class="cut-count">{setup["rollCounts"][k]}x</span></div>'
-            waste_flex = max(abs(waste_mm), 5)
-            map_html += f'<div class="cut-segment-waste" style="flex:{waste_flex}"><span class="cut-waste-label">{waste_mm:+.1f}</span></div>'
-            map_html += '</div>'
-
-            prog_w = min(max(abs(slu), 0), 100)
-            progress_html = (
-                '<div class="progress-wrap">'
-                '<div class="progress-label"><span>SLU</span>'
-                f'<span style="color:#ef4444;">{slu:.2f}%</span></div>'
-                '<div class="progress-track">'
-                f'<div class="progress-fill" style="width:{prog_w}%"></div>'
-                '</div></div>'
-            )
-
-            _runs  = setup["runs"]
-            _lreal = setup["l_real"]
-            _kglr  = setup["kg_lreal"]
-            _jcheios = setup["jumbos_cheios"]
-            metrics_html = (
-                '<div class="metric-row">'
-                '<div class="metric-mini">'
-                '<div class="metric-mini-label">Tiradas</div>'
-                f'<div class="metric-mini-value" style="color:white">{_runs}</div></div>'
-                '<div class="metric-mini">'
-                '<div class="metric-mini-label">L. Real</div>'
-                f'<div class="metric-mini-value" style="color:#7c3aed">{_lreal:.1f}<span style="font-size:10px">mm</span></div></div>'
-                '<div class="metric-mini">'
-                '<div class="metric-mini-label">Kg Setup</div>'
-                f'<div class="metric-mini-value" style="color:#3b82f6">{_kglr:,.0f}<span style="font-size:10px">kg</span></div></div>'
-                '<div class="metric-mini">'
-                '<div class="metric-mini-label">Jumbos</div>'
-                f'<div class="metric-mini-value" style="color:#94a3b8">{_jcheios}<span style="font-size:10px">+frac</span></div></div>'
-                '</div>'
-            )
-
-            detail_rows = ""
-            for k, w in enumerate(setup["widths"]):
-                kerf = setup["kerfs"][k]
-                cnt  = setup["rollCounts"][k]
-                detail_rows += (
-                    '<div style="display:flex;justify-content:space-between;align-items:center;'
-                    'padding:10px 12px;background:#0f172a;border:1px solid #1e293b;'
-                    'border-radius:8px;margin-bottom:6px;">'
-                    '<div>'
-                    f'<div style="font-size:11px;font-weight:900;color:#e2e8f0">{int(w)} mm</div>'
-                    f'<div style="font-size:9px;color:#475569">Kerf: +{kerf:g}mm</div>'
-                    '</div>'
-                    f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;font-weight:700;color:#7c3aed">{cnt}x</div>'
-                    '<div style="text-align:right">'
-                    f'<div style="font-size:11px;font-weight:700;color:#94a3b8">{int(w+kerf)} mm bruto</div>'
-                    '</div>'
-                    '</div>'
-                )
-
-            jumbo_str = f"{setup['jumbos_cheios']} RJ(s) completo(s)"
-            if setup["runs_resto"] > 0:
-                jumbo_str += f" + 1 fração ({setup['runs_resto']} tiradas)"
-
-            _sid   = setup["id"]
-            _stipo = setup["tipo"]
-            _card_html = (
-                '<div class="combo-card">'
-                '<div class="combo-header">'
-                '<div style="display:flex;align-items:center;gap:10px;">'
-                f'<span class="combo-id">{_sid}</span>'
-                f'<span style="font-size:11px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">{_stipo}</span>'
-                '</div>'
-                f'{badge}'
-                '</div>'
-                f'{map_html}'
-                f'{progress_html}'
-                f'{metrics_html}'
-                '<div style="margin-top:12px;padding:10px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:10px;color:#64748b;">'
-                f'🏭 Consumo Extrusão: <b style="color:#94a3b8">{jumbo_str}</b>'
-                '</div>'
-                '<div style="margin-top:16px;padding-top:16px;border-top:1px solid #1e293b;">'
-                '<div style="font-size:9px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Larguras do Esquema</div>'
-                f'{detail_rows}'
-                '</div>'
-                '</div>'
-            )
-            st.markdown(_card_html, unsafe_allow_html=True)
-
-    st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
-
     # ── BALANÇO DE MASSA ──────────────────────────────────────────────────────
-st.markdown('<div class="section-title">Resumo de Atendimento — Balanço de Massa</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Resumo de Atendimento — Balanço de Massa</div>', unsafe_allow_html=True)
 
-if "balanco" not in r or not r["balanco"]:
-    st.warning("Nenhum dado de balanço de massa foi gerado.")
-else:
-    rows = []
-    for b in r["balanco"]:
-        infull = float(b.get("infull", 0))
+    if "balanco" not in r or not r["balanco"]:
+        st.warning("Nenhum dado de balanço de massa foi gerado.")
+    else:
+        rows = []
+        for b in r["balanco"]:
+            infull = float(b.get("infull", 0))
 
-        if 98 <= infull <= 102:
-            badge_otif = f'<span class="otif-green">{infull:.1f}%</span>'
-        elif infull > 102:
-            badge_otif = f'<span class="otif-orange">{infull:.1f}%</span>'
-        else:
-            badge_otif = f'<span class="otif-red">{infull:.1f}%</span>'
+            if 98 <= infull <= 102:
+                badge_otif = f'<span class="otif-green">{infull:.1f}%</span>'
+            elif infull > 102:
+                badge_otif = f'<span class="otif-orange">{infull:.1f}%</span>'
+            else:
+                badge_otif = f'<span class="otif-red">{infull:.1f}%</span>'
 
-        sobra = float(b.get("sobra_kg", 0))
-        sobra_str = f'+{sobra:,.0f}' if sobra >= 0 else f'{sobra:,.0f}'
+            sobra = float(b.get("sobra_kg", 0))
+            sobra_str = f'+{sobra:,.0f}' if sobra >= 0 else f'{sobra:,.0f}'
 
-        rows.append({
-            "Largura": f'{int(float(b.get("largura", 0)))} mm',
-            "Kerf": f'+{float(b.get("kerf", 0)):g}mm',
-            "Dem (un)": int(float(b.get("dem_rolos", 0))),
-            "Prod (un)": int(float(b.get("prod_rolos", 0))),
-            "In-Full": badge_otif,
-            "Dem (kg)": f'{float(b.get("kg_dem", 0)):,.0f}',
-            "Prod (kg)": f'{float(b.get("kg_prod", 0)):,.0f}',
-            "Sobra (kg)": sobra_str,
-        })
+            rows.append({
+                "Largura": f'{int(float(b.get("largura", 0)))} mm',
+                "Kerf": f'+{float(b.get("kerf", 0)):g}mm',
+                "Dem (un)": int(float(b.get("dem_rolos", 0))),
+                "Prod (un)": int(float(b.get("prod_rolos", 0))),
+                "In-Full": badge_otif,
+                "Dem (kg)": f'{float(b.get("kg_dem", 0)):,.0f}',
+                "Prod (kg)": f'{float(b.get("kg_prod", 0)):,.0f}',
+                "Sobra (kg)": sobra_str,
+            })
 
-    df_bal = pd.DataFrame(rows)
-    st.markdown(df_bal.to_html(escape=False, index=False), unsafe_allow_html=True)
-   
+        df_bal = pd.DataFrame(rows)
+        st.markdown(df_bal.to_html(escape=False, index=False), unsafe_allow_html=True)
+
     # ── FOOTER ────────────────────────────────────────────────────────────────
     elapsed_str = f"{r.get('elapsed', 0):.2f}s"
     st.markdown(
@@ -967,4 +858,5 @@ else:
         '<p style="color:#1e293b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:4px;">'
         f'MAGNERA INDUSTRIAL ENGINE · V10.22 · Tempo de processamento: {elapsed_str}'
         '</p></div>',
-        unsafe_allow_html=True)
+        unsafe_allow_html=True
+    )
