@@ -12,7 +12,7 @@ try:
 except ImportError:
     ORTOOLS_OK = False
 
-st.set_page_config(page_title="Otimizador de Corte", page_icon="⚙️", layout="wide")
+st.set_page_config(page_title="MAGNERA – Otimizador de Corte", page_icon="⚙️", layout="wide")
 
 _CSS = """
 <style>
@@ -214,7 +214,7 @@ def run_optimization(df_config, df_pedidos_raw, df_lu, df_arr):
 
     pool_detalhado = minerar_pool()
     if not pool_detalhado:
-        return None, "Pool vazio. Nenhum esquema válido encontrado. Verifique Parâmetros de corte."
+        return None, "Pool vazio. Nenhum esquema válido encontrado. Verifique Fator_LU_Minima ou larguras."
 
     if not ORTOOLS_OK:
         return None, "OR-Tools não instalado. Execute: pip install ortools"
@@ -386,8 +386,9 @@ _defaults = {
     "result":    None,
     "simulated": False,
     "orders": [
-        {"id": "1", "largura": 0, "kg": 0.0},
-        {"id": "2", "largura": 0, "kg": 0.0},
+        {"id": "1", "largura": 235, "kg": 6000.0},
+        {"id": "2", "largura": 270, "kg": 10000.0},
+        {"id": "3", "largura": 400, "kg": 8500.0},
     ],
 }
 for _k, _v in _defaults.items():
@@ -508,6 +509,7 @@ with st.expander(
     st.markdown(
         '<div class="info-box" style="margin-top:0">'
         '📁 Aceita <b>.xlsb</b> e <b>.xlsx</b>.'
+        
         '</div>',
         unsafe_allow_html=True)
 
@@ -621,7 +623,7 @@ with _rc2:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
     st.markdown('<div class="param-box-title">In Full & Setups</div>', unsafe_allow_html=True)
     _rs1, _rs2, _rs3 = st.columns(3)
-    meta_otif     = _rs1.number_input('Meta In Full (%)',       value=105.0, step=0.5,  format='%.1f', min_value=100.0, max_value=115.0)
+    meta_otif     = _rs1.number_input('Meta In Full (%)',    value=105.0, step=0.5,  format='%.1f', min_value=100.0, max_value=115.0)
     max_setups    = _rs2.number_input('Max Setups',          value=10,    step=1,    min_value=1)
     setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=70.0,  step=1.0,  format='%.1f', min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -629,27 +631,27 @@ with _rc2:
 st.markdown('<div class="param-box">', unsafe_allow_html=True)
 st.markdown('<div class="param-box-title">Custos & Penalidades</div>', unsafe_allow_html=True)
 _cp1, _cp2, _cp3, _cp4, _cp5 = st.columns(5)
-custo_tirada  = _cp1.number_input('Custo Tirada',      value=0.0,   step=10.0)
-custo_setup   = _cp2.number_input('Custo Troca Faca',  value=0.0, step=500.0)
-custo_estoque = _cp3.number_input('Custo Excesso Estoque',     value=0.0,    step=1.0)
-custo_falta   = _cp4.number_input('Custo Falta Material',       value=100.0,   step=5.0)
-bonus_eng     = _cp5.number_input('Custo Avanço Refile',  value=100.0,   step=1.0)
+custo_tirada  = _cp1.number_input('Custo Tirada',      value=0.0,    step=10.0)
+custo_setup   = _cp2.number_input('Custo Troca Faca',  value=0.0,    step=500.0)
+custo_estoque = _cp3.number_input('Custo Excesso Estoque', value=0.0, step=1.0)
+custo_falta   = _cp4.number_input('Custo Falta Material', value=100.0, step=5.0)
+bonus_eng     = _cp5.number_input('Custo Avanço Refile', value=100.0, step=1.0)
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 # ── DIAGNÓSTICO DE REGRAS (sempre visível, usa inputs atuais) ────────────────
 st.markdown('<div class="section-title">Diagnóstico de Regras de Negócio</div>', unsafe_allow_html=True)
 _dstr_setup   = 'BAIXA — Prioridade: Reduzir SLU' if custo_setup < 3000 else 'ALTA — Prioridade: Evitar paradas da rebobinadeira'
-_dstr_estoque = 'FLEXÍVEL — Gera estoque para salvar SLU' if custo_estoque <= 5 else 'RÍGIDA — Evita estoque a todo custo'
-_dstr_falta   = 'PERMITIDA — Pode entregar a menos' if custo_falta <= 10 else 'PROIBIDA — In-Full 100%'
+_dstr_estoque = 'FLEXÍVEL — Gera sobras para salvar SLU' if custo_estoque <= 5 else 'RÍGIDA — Evita sobras a todo custo'
+_dstr_falta   = 'PERMITIDA — Pode entregar a menos' if custo_falta <= 10 else 'PROIBIDA — Força In-Full de 100%'
 _dpct_over    = meta_otif - 100.0
 _dzeb         = surfactant == 'ZEB'
 _dextrusao    = f'ZEBRADO ({surfactant})' if _dzeb else f'HOMOGÊNEO ({surfactant})'
 _diag_html = (
     '<div class="info-box">'
     f'<b>Máquina:</b> {machine} | {technology} | {surfactant} | {calender} &nbsp;|&nbsp;'
-    f'<b>%Utilização da LU:</b> {fator_lu_min:.2f} &nbsp;|&nbsp;'
-    f'<b>Avanço de Refile (%):</b> {tol_lu:.2f}%<br>'
+    f'<b>Fator LU Min:</b> {fator_lu_min:.2f} &nbsp;|&nbsp;'
+    f'<b>Tolerância LU:</b> {tol_lu:.2f}%<br>'
     f'<b>Extrusão:</b> {_dextrusao} &nbsp;|&nbsp;'
     f'<b>Max Facas:</b> {max_facas} &nbsp;|&nbsp;'
     f'<b>Max Larg/Esquema:</b> {max_larg_esq} &nbsp;|&nbsp;'
@@ -750,9 +752,9 @@ if st.session_state.simulated and st.session_state.result:
     if r["tem_slu_negativo"]:
         st.markdown("""
         <div class="warn-box">
-        ⚠️ <b>ATENÇÃO: PLANO COM SLU NEGATIVO (AVANÇO DA LARGURA ÚTIL) IDENTIFICADO</b><br>
+        ⚠️ <b>ATENÇÃO: PLANO COM SLU NEGATIVO (AVANÇO DE CALANDRA) IDENTIFICADO</b><br>
         <span style="font-size:12px;color:#94a3b8;">
-        Requer aprovação obrigatória da Engenharia de Processos antes da produção.
+        Requer validação e assinatura obrigatória da Engenharia de Processos antes da produção.
         </span>
         </div>
         """, unsafe_allow_html=True)
@@ -769,56 +771,50 @@ if st.session_state.simulated and st.session_state.result:
     est_color  = "#f59e0b" if r["t_kg_estoque"] > 0 else "#10b981"
     falt_color = "#ef4444" if r["t_kg_falta"] > 0 else "#10b981"
 
-    st.markdown(f"""
-    <div class="kpi-grid">
-      <div class="kpi-card" style="border-top-color:{slu_color}">
-        <div class="kpi-label">SLU Global</div>
-        <div class="kpi-value" style="color:{slu_color}">{r["slu_final_pct"]:.2f}%</div>
-        <div class="kpi-desc">Perda lateral s/ extrusão</div>
-      </div>
-      <div class="kpi-card" style="border-top-color:{ext_color}">
-        <div class="kpi-label">Massa Extrusada</div>
-        <div class="kpi-value" style="color:{ext_color}">{r["t_kg_extrusado"]:,.0f} kg</div>
-        <div class="kpi-desc">Líquida: {r["t_kg_prod_liq"]:,.0f} kg</div>
-      </div>
-      <div class="kpi-card" style="border-top-color:{rj_color}">
-        <div class="kpi-label">Jumbos Físicos</div>
-        <div class="kpi-value" style="color:{rj_color}">{r["kpi_rjs_total"]}</div>
-        <div class="kpi-desc">{r["kpi_rjs_cheios"]} completos + {r["kpi_rjs_parciais"]} fração</div>
-      </div>
-      <div class="kpi-card" style="border-top-color:{inf_color}">
-        <div class="kpi-label">In-Full Global</div>
-        <div class="kpi-value" style="color:{inf_color}">{r["total_infull"]:.1f}%</div>
-        <div class="kpi-desc">{r["t_runs"]} tiradas totais</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    _k1 = (
+        '<div class="kpi-grid">'
+        f'<div class="kpi-card" style="border-top-color:{slu_color}">'
+        '<div class="kpi-label">SLU Global</div>'
+        f'<div class="kpi-value" style="color:{slu_color}">{r["slu_final_pct"]:.2f}%</div>'
+        '<div class="kpi-desc">Perda lateral s/ extrusão</div></div>'
+        f'<div class="kpi-card" style="border-top-color:{ext_color}">'
+        '<div class="kpi-label">Massa Extrusada</div>'
+        f'<div class="kpi-value" style="color:{ext_color}">{r["t_kg_extrusado"]:,.0f} kg</div>'
+        f'<div class="kpi-desc">Líquida: {r["t_kg_prod_liq"]:,.0f} kg</div></div>'
+        f'<div class="kpi-card" style="border-top-color:{rj_color}">'
+        '<div class="kpi-label">Jumbos Físicos</div>'
+        f'<div class="kpi-value" style="color:{rj_color}">{r["kpi_rjs_total"]}</div>'
+        f'<div class="kpi-desc">{r["kpi_rjs_cheios"]} completos + {r["kpi_rjs_parciais"]} fração</div></div>'
+        f'<div class="kpi-card" style="border-top-color:{inf_color}">'
+        '<div class="kpi-label">In-Full Global</div>'
+        f'<div class="kpi-value" style="color:{inf_color}">{r["total_infull"]:.1f}%</div>'
+        f'<div class="kpi-desc">{r["t_runs"]} tiradas totais</div></div>'
+        '</div>'
+    )
+    st.markdown(_k1, unsafe_allow_html=True)
 
     # segunda linha de KPIs
-    st.markdown(f"""
-    <div class="kpi-grid">
-      <div class="kpi-card" style="border-top-color:#64748b">
-        <div class="kpi-label">Massa Pedida</div>
-        <div class="kpi-value" style="color:#94a3b8">{r["t_kg_vend"]:,.0f} kg</div>
-        <div class="kpi-desc">Demanda total</div>
-      </div>
-      <div class="kpi-card" style="border-top-color:#ef4444">
-        <div class="kpi-label">Refugo Facas</div>
-        <div class="kpi-value" style="color:#ef4444">{r["t_kg_kerf"]:,.0f} kg</div>
-        <div class="kpi-desc">Arruelas / Kerf</div>
-      </div>
-      <div class="kpi-card" style="border-top-color:{est_color}">
-        <div class="kpi-label">Estoque Gerado</div>
-        <div class="kpi-value" style="color:{est_color}">{r["t_kg_estoque"]:,.0f} kg</div>
-        <div class="kpi-desc">Sobra acima da demanda</div>
-      </div>
-      <div class="kpi-card" style="border-top-color:{falt_color}">
-        <div class="kpi-label">Falta em Pedidos</div>
-        <div class="kpi-value" style="color:{falt_color}">{r["t_kg_falta"]:,.0f} kg</div>
-        <div class="kpi-desc">Dívida com clientes</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    _k2 = (
+        '<div class="kpi-grid">'
+        '<div class="kpi-card" style="border-top-color:#64748b">'
+        '<div class="kpi-label">Massa Pedida</div>'
+        f'<div class="kpi-value" style="color:#94a3b8">{r["t_kg_vend"]:,.0f} kg</div>'
+        '<div class="kpi-desc">Demanda total</div></div>'
+        '<div class="kpi-card" style="border-top-color:#ef4444">'
+        '<div class="kpi-label">Refugo Facas</div>'
+        f'<div class="kpi-value" style="color:#ef4444">{r["t_kg_kerf"]:,.0f} kg</div>'
+        '<div class="kpi-desc">Arruelas / Kerf</div></div>'
+        f'<div class="kpi-card" style="border-top-color:{est_color}">'
+        '<div class="kpi-label">Estoque Gerado</div>'
+        f'<div class="kpi-value" style="color:{est_color}">{r["t_kg_estoque"]:,.0f} kg</div>'
+        '<div class="kpi-desc">Sobra acima da demanda</div></div>'
+        f'<div class="kpi-card" style="border-top-color:{falt_color}">'
+        '<div class="kpi-label">Falta em Pedidos</div>'
+        f'<div class="kpi-value" style="color:{falt_color}">{r["t_kg_falta"]:,.0f} kg</div>'
+        '<div class="kpi-desc">Dívida com clientes</div></div>'
+        '</div>'
+    )
+    st.markdown(_k2, unsafe_allow_html=True)
 
     st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
@@ -850,31 +846,35 @@ if st.session_state.simulated and st.session_state.result:
             map_html += '</div>'
 
             prog_w = min(max(abs(slu), 0), 100)
-            progress_html = f"""
-            <div class="progress-wrap">
-              <div class="progress-label"><span>SLU</span><span style="color:#ef4444;">{slu:.2f}%</span></div>
-              <div class="progress-track"><div class="progress-fill" style="width:{prog_w}%"></div></div>
-            </div>"""
+            progress_html = (
+                '<div class="progress-wrap">'
+                '<div class="progress-label"><span>SLU</span>'
+                f'<span style="color:#ef4444;">{slu:.2f}%</span></div>'
+                '<div class="progress-track">'
+                f'<div class="progress-fill" style="width:{prog_w}%"></div>'
+                '</div></div>'
+            )
 
-            metrics_html = f"""
-            <div class="metric-row">
-              <div class="metric-mini">
-                <div class="metric-mini-label">Tiradas</div>
-                <div class="metric-mini-value" style="color:white">{setup["runs"]}</div>
-              </div>
-              <div class="metric-mini">
-                <div class="metric-mini-label">L. Real</div>
-                <div class="metric-mini-value" style="color:#7c3aed">{setup["l_real"]:.1f}<span style="font-size:10px">mm</span></div>
-              </div>
-              <div class="metric-mini">
-                <div class="metric-mini-label">Kg Setup</div>
-                <div class="metric-mini-value" style="color:#3b82f6">{setup["kg_lreal"]:,.0f}<span style="font-size:10px">kg</span></div>
-              </div>
-              <div class="metric-mini">
-                <div class="metric-mini-label">Jumbos</div>
-                <div class="metric-mini-value" style="color:#94a3b8">{setup["jumbos_cheios"]}<span style="font-size:10px">+frac</span></div>
-              </div>
-            </div>"""
+            _runs  = setup["runs"]
+            _lreal = setup["l_real"]
+            _kglr  = setup["kg_lreal"]
+            _jcheios = setup["jumbos_cheios"]
+            metrics_html = (
+                '<div class="metric-row">'
+                '<div class="metric-mini">'
+                '<div class="metric-mini-label">Tiradas</div>'
+                f'<div class="metric-mini-value" style="color:white">{_runs}</div></div>'
+                '<div class="metric-mini">'
+                '<div class="metric-mini-label">L. Real</div>'
+                f'<div class="metric-mini-value" style="color:#7c3aed">{_lreal:.1f}<span style="font-size:10px">mm</span></div></div>'
+                '<div class="metric-mini">'
+                '<div class="metric-mini-label">Kg Setup</div>'
+                f'<div class="metric-mini-value" style="color:#3b82f6">{_kglr:,.0f}<span style="font-size:10px">kg</span></div></div>'
+                '<div class="metric-mini">'
+                '<div class="metric-mini-label">Jumbos</div>'
+                f'<div class="metric-mini-value" style="color:#94a3b8">{_jcheios}<span style="font-size:10px">+frac</span></div></div>'
+                '</div>'
+            )
 
             detail_rows = ""
             for k, w in enumerate(setup["widths"]):
@@ -956,10 +956,9 @@ if st.session_state.simulated and st.session_state.result:
 
     # ── FOOTER ────────────────────────────────────────────────────────────────
     elapsed_str = f"{r.get('elapsed', 0):.2f}s"
-    st.markdown(f"""
-    <div style="text-align:center;padding:40px 0 20px;">
-      <p style="color:#1e293b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:4px;">
-        MAGNERA INDUSTRIAL ENGINE · V10.22 · Tempo de processamento: {elapsed_str}
-      </p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        '<div style="text-align:center;padding:40px 0 20px;">'
+        '<p style="color:#1e293b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:4px;">'
+        f'MAGNERA INDUSTRIAL ENGINE · V10.22 · Tempo de processamento: {elapsed_str}'
+        '</p></div>',
+        unsafe_allow_html=True)
