@@ -562,7 +562,7 @@ with _rc1:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
     st.markdown('<div class="param-box-title">Corte Físico</div>', unsafe_allow_html=True)
     _rr1, _rr2, _rr3 = st.columns(3)
-    max_facas    = _rr1.number_input('Qtde Facas',           value=8,    step=1,   min_value=1)
+    max_facas    = _rr1.number_input('Qtde Facas',           value=40,    step=1,   min_value=1)
     max_larg_esq = _rr2.number_input('Max Larguras/Esquema', value=2,    step=1,   min_value=1, max_value=5)
     diff_limit   = _rr3.number_input('Dif. Mín. Larg. (mm)', value=30.0, step=5.0, min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -573,7 +573,7 @@ with _rc2:
     _rs1, _rs2, _rs3 = st.columns(3)
     meta_otif     = _rs1.number_input('Meta OTIF (%)',       value=101.0, step=0.5,  format='%.1f', min_value=100.0, max_value=115.0)
     max_setups    = _rs2.number_input('Max Setups',          value=10,    step=1,    min_value=1)
-    setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=0.0,  step=1.0,  format='%.1f', min_value=0.0)
+    setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=70,  step=1.0,  format='%.1f', min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="param-box">', unsafe_allow_html=True)
