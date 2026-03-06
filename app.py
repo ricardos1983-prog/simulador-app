@@ -552,7 +552,7 @@ with _cm2:
     st.markdown('<div class="param-box-title">LU & Tolerância</div>', unsafe_allow_html=True)
     _tc1, _tc2 = st.columns(2)
     fator_lu_min = _tc1.number_input('Fator LU Mínima', value=0.90, step=0.01, format='%.2f', min_value=0.5, max_value=1.0)
-    tol_lu       = _tc2.number_input('Tolerância LU (%)', value=-0.30, step=0.05, format='%.2f', min_value=0.0)
+    tol_lu       = _tc2.number_input('Tolerância LU (%)', value=0.30, step=0.05, format='%.2f', min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="section-title">✂️ Restrições de Corte & Solver</div>', unsafe_allow_html=True)
