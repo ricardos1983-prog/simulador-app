@@ -355,69 +355,97 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ── HELPER: ler xlsx ou xlsb ─────────────────────────────────────────────────
+# ── HELPERS: leitura e cache em disco ────────────────────────────────────────
 import io as _io
+import os as _os
+import hashlib as _hashlib
+
+_CACHE_DIR = _os.path.join(_os.path.expanduser("~"), ".magnera_cache")
+_os.makedirs(_CACHE_DIR, exist_ok=True)
+
+def _cache_path(key):
+    return _os.path.join(_CACHE_DIR, f"{key}.parquet")
+
+def _hash_bytes(b):
+    return _hashlib.md5(b).hexdigest()
+
+def _save_cache(key, df):
+    try:
+        df.to_parquet(_cache_path(key), index=False)
+    except Exception:
+        pass  # cache opcional — não quebra o app
+
+def _load_cache(key):
+    p = _cache_path(key)
+    if _os.path.exists(p):
+        try:
+            return pd.read_parquet(p)
+        except Exception:
+            pass
+    return None
 
 def _read_any_excel(raw_bytes, filename, sheet_hint=None):
     """
-    Lê bytes de .xlsx/.xlsb/.xls ou qualquer extensão.
-    Detecta o formato pelos magic bytes do arquivo:
-      - xlsb: começa com D0 CF 11 E0 (formato CFB) → pyxlsb
-      - xlsx: começa com PK (ZIP) → openpyxl
+    Lê bytes de .xlsx/.xlsb/.xls.
+    Detecta formato pelos magic bytes (independe da extensão).
+    Usa cache MD5 em parquet para evitar releitura.
     """
+    _h = _hash_bytes(raw_bytes)
+    _ck = f"{sheet_hint or 'sheet0'}_{_h}"
+    _cached = _load_cache(_ck)
+    if _cached is not None:
+        return _cached
+
     buf = _io.BytesIO(raw_bytes)
-
-    # Detectar formato pelos primeiros bytes
     magic = raw_bytes[:4]
-    is_xlsb_by_magic = magic == b'\xd0\xcf\x11\xe0'   # OLE2 / CFB → xlsb ou xls
-    is_xlsx_by_magic  = magic[:2] == b'PK'              # ZIP → xlsx/xlsm
+    is_xlsb = (magic == b'\xd0\xcf\x11\xe0') or filename.lower().endswith('.xlsb')
 
-    # Fallback: usar extensão do nome
-    ext = filename.lower().rsplit('.', 1)[-1] if '.' in filename else ''
-    force_xlsb = ext in ('xlsb',) or is_xlsb_by_magic
-
-    if force_xlsb:
+    if is_xlsb:
         try:
             import pyxlsb  # noqa
         except ImportError:
             raise ImportError("pyxlsb não instalado. Adicione 'pyxlsb' ao requirements.txt.")
         if sheet_hint:
             try:
-                return pd.read_excel(buf, sheet_name=sheet_hint, engine='pyxlsb')
+                df = pd.read_excel(buf, sheet_name=sheet_hint, engine='pyxlsb')
+                _save_cache(_ck, df)
+                return df
             except Exception:
                 buf = _io.BytesIO(raw_bytes)
-        return pd.read_excel(buf, sheet_name=0, engine='pyxlsb')
+        df = pd.read_excel(buf, sheet_name=0, engine='pyxlsb')
     else:
         if sheet_hint:
             try:
-                return pd.read_excel(buf, sheet_name=sheet_hint)
+                df = pd.read_excel(buf, sheet_name=sheet_hint)
+                _save_cache(_ck, df)
+                return df
             except Exception:
                 buf = _io.BytesIO(raw_bytes)
-        return pd.read_excel(buf, sheet_name=0)
+        df = pd.read_excel(buf, sheet_name=0)
 
-def _upload_widget(label, key_bytes, key_name):
-    """
-    Uploader sem restrição de MIME usando st.file_uploader com type=None.
-    O Streamlit >=1.28 não bloqueia quando type não é passado — mas em algumas
-    versões cloud o upload ainda rejeita pelo content-type do browser.
-    Solução: aceitar qualquer arquivo e validar pelo nome/extensão no servidor.
-    """
-    # Hack: forçar o browser a não enviar content-type restrito
-    # usando label_visibility e sem parâmetro type
-    f = st.file_uploader(label, key=key_bytes, label_visibility='collapsed')
-    return f
+    _save_cache(_ck, df)
+    return df
+
+# ── Carregar caches do disco no session_state ao iniciar ─────────────────────
+if st.session_state.df_lu is None:
+    _df_cached = _load_cache("df_lu_active")
+    if _df_cached is not None:
+        st.session_state.df_lu = _df_cached
+
+if st.session_state.df_arr is None:
+    _df_cached = _load_cache("df_arr_active")
+    if _df_cached is not None:
+        st.session_state.df_arr = _df_cached
 
 # ── PÁGINA ÚNICA — OTIMIZADOR ─────────────────────────────────────────────────
 
-# CSS para ocultar o aviso de tipo de arquivo do Streamlit e mostrar nosso input
 st.markdown("""
 <style>
-/* Oculta a mensagem "Limit ... files are not allowed" do file_uploader */
 [data-testid="stFileUploaderDropzoneInstructions"] small { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Bloco de uploads das matrizes (compacto, no topo) ─────────────────────────
+# ── Bloco de uploads das matrizes ─────────────────────────────────────────────
 _lu_ok  = st.session_state.df_lu  is not None
 _arr_ok = st.session_state.df_arr is not None
 
@@ -428,10 +456,8 @@ with st.expander(
 ):
     st.markdown(
         '<div class="info-box" style="margin-top:0">'
-        '📁 Aceita <b>.xlsb</b> e <b>.xlsx</b>. Carregue uma vez — ficam salvas na sessão.<br>'
-        '⚠️ Se o <b>.xlsb</b> for bloqueado pelo browser: no Explorer, renomeie a extensão para '
-        '<code>.bin</code> antes de enviar (ex: <code>arruelas.bin</code>). '
-        'O app detecta e lê o formato corretamente.'
+        '📁 Aceita <b>.xlsb</b> e <b>.xlsx</b>. Após o primeiro upload ficam salvas '
+        'permanentemente no servidor — não é necessário reenviar a cada sessão.'
         '</div>',
         unsafe_allow_html=True)
 
@@ -443,29 +469,27 @@ with st.expander(
             _df = st.session_state.df_lu
             st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas × {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
             with st.expander('Visualizar'):
-                st.dataframe(_df, use_container_width=True)
+                st.dataframe(_df.head(200), use_container_width=True)
+                st.caption(f"Exibindo 200 de {len(_df)} linhas")
         else:
             st.markdown('<div class="matrix-none">⬜ Aguardando arquivo</div>', unsafe_allow_html=True)
 
-        _f_lu = st.file_uploader(
-            'Largura Útil (.xlsx ou .xlsb)',
-            key='up_lu',
-            label_visibility='collapsed',
-            # Sem parâmetro type= → aceita qualquer arquivo
-        )
+        _f_lu = st.file_uploader('Largura Útil (.xlsx ou .xlsb)', key='up_lu', label_visibility='collapsed')
         if _f_lu is not None:
             _fname_lu = _f_lu.name
             if not any(_fname_lu.lower().endswith(e) for e in ('.xlsx','.xlsb','.xls','.bin')):
-                st.error(f'Formato não suportado: {_fname_lu}. Use .xlsx, .xlsb ou renomeie para .bin')
+                st.error(f'Formato não suportado: {_fname_lu}')
             else:
-                try:
-                    _raw = _f_lu.read()
-                    _df_new = _read_any_excel(_raw, _fname_lu, sheet_hint='Matriz_LU')
-                    st.session_state.df_lu = _df_new
-                    st.success(f'✅ Matriz LU carregada: {len(_df_new)} linhas')
-                    st.rerun()
-                except Exception as _e:
-                    st.error(f'Erro ao ler Matriz LU: {_e}')
+                with st.spinner('⏳ Lendo Matriz LU...'):
+                    try:
+                        _raw = _f_lu.read()
+                        _df_new = _read_any_excel(_raw, _fname_lu, sheet_hint='Matriz_LU')
+                        st.session_state.df_lu = _df_new
+                        _save_cache("df_lu_active", _df_new)
+                        st.success(f'✅ {len(_df_new)} linhas carregadas')
+                        st.rerun()
+                    except Exception as _e:
+                        st.error(f'Erro: {_e}')
 
     with _uc2:
         st.markdown('<div class="param-box-title">🔩 Matriz Arruelas — arruelas</div>', unsafe_allow_html=True)
@@ -473,29 +497,27 @@ with st.expander(
             _df = st.session_state.df_arr
             st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas × {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
             with st.expander('Visualizar'):
-                st.dataframe(_df, use_container_width=True)
+                st.dataframe(_df.head(200), use_container_width=True)
+                st.caption(f"Exibindo 200 de {len(_df)} linhas")
         else:
             st.markdown('<div class="matrix-none">⬜ Aguardando arquivo</div>', unsafe_allow_html=True)
 
-        _f_arr = st.file_uploader(
-            'Arruelas (.xlsx ou .xlsb)',
-            key='up_arr',
-            label_visibility='collapsed',
-            # Sem parâmetro type= → aceita qualquer arquivo
-        )
+        _f_arr = st.file_uploader('Arruelas (.xlsx ou .xlsb)', key='up_arr', label_visibility='collapsed')
         if _f_arr is not None:
             _fname_arr = _f_arr.name
             if not any(_fname_arr.lower().endswith(e) for e in ('.xlsx','.xlsb','.xls','.bin')):
-                st.error(f'Formato não suportado: {_fname_arr}. Use .xlsx, .xlsb ou renomeie para .bin')
+                st.error(f'Formato não suportado: {_fname_arr}')
             else:
-                try:
-                    _raw = _f_arr.read()
-                    _df_new = _read_any_excel(_raw, _fname_arr, sheet_hint='Matriz_Arruelas')
-                    st.session_state.df_arr = _df_new
-                    st.success(f'✅ Matriz Arruelas carregada: {len(_df_new)} linhas')
-                    st.rerun()
-                except Exception as _e:
-                    st.error(f'Erro ao ler Matriz Arruelas: {_e}')
+                with st.spinner('⏳ Lendo Matriz Arruelas...'):
+                    try:
+                        _raw = _f_arr.read()
+                        _df_new = _read_any_excel(_raw, _fname_arr, sheet_hint='Matriz_Arruelas')
+                        st.session_state.df_arr = _df_new
+                        _save_cache("df_arr_active", _df_new)
+                        st.success(f'✅ {len(_df_new)} linhas carregadas')
+                        st.rerun()
+                    except Exception as _e:
+                        st.error(f'Erro: {_e}')
 
 # ── Reatribuir flags após possíveis uploads acima ────────────────────────────
 _lu_ok  = st.session_state.df_lu  is not None
