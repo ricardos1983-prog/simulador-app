@@ -12,7 +12,7 @@ try:
 except ImportError:
     ORTOOLS_OK = False
 
-st.set_page_config(page_title="MAGNERA – Otimizador de Corte", page_icon="⚙️", layout="wide")
+st.set_page_config(page_title="Otimizador de Corte", page_icon="⚙️", layout="wide")
 
 _CSS = """
 <style>
@@ -214,7 +214,7 @@ def run_optimization(df_config, df_pedidos_raw, df_lu, df_arr):
 
     pool_detalhado = minerar_pool()
     if not pool_detalhado:
-        return None, "Pool vazio. Nenhum esquema válido encontrado. Verifique Fator_LU_Minima ou larguras."
+        return None, "Pool vazio. Nenhum esquema válido encontrado. Verifique Parâmetros de corte."
 
     if not ORTOOLS_OK:
         return None, "OR-Tools não instalado. Execute: pip install ortools"
@@ -386,9 +386,8 @@ _defaults = {
     "result":    None,
     "simulated": False,
     "orders": [
-        {"id": "1", "largura": 235, "kg": 6000.0},
-        {"id": "2", "largura": 270, "kg": 10000.0},
-        {"id": "3", "largura": 400, "kg": 8500.0},
+        {"id": "1", "largura": 0, "kg": 0.0},
+        {"id": "2", "largura": 0, "kg": 0.0},
     ],
 }
 for _k, _v in _defaults.items():
@@ -502,39 +501,38 @@ _lu_ok  = st.session_state.df_lu  is not None
 _arr_ok = st.session_state.df_arr is not None
 
 with st.expander(
-    ("✅ Matrizes carregadas" if (_lu_ok and _arr_ok)
+    ("✅ Tabelas carregadas" if (_lu_ok and _arr_ok)
      else "⚠️  Matrizes de Referência — clique para carregar"),
     expanded=not (_lu_ok and _arr_ok)
 ):
     st.markdown(
         '<div class="info-box" style="margin-top:0">'
-        '📁 Aceita <b>.xlsb</b> e <b>.xlsx</b>. Após o primeiro upload ficam salvas '
-        'permanentemente no servidor — não é necessário reenviar a cada sessão.'
+        '📁 Aceita <b>.xlsb</b> e <b>.xlsx</b>.'
         '</div>',
         unsafe_allow_html=True)
 
     _uc1, _uc2 = st.columns(2)
 
     with _uc1:
-        st.markdown('<div class="param-box-title">Matriz LU — largura_util</div>', unsafe_allow_html=True)
+        st.markdown('<div class="param-box-title">TABELA — Largura útil</div>', unsafe_allow_html=True)
         if _lu_ok:
             _df = st.session_state.df_lu
             st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas x {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
             with st.expander('Visualizar'):
-                st.dataframe(_df.head(200), use_container_width=True)
-                st.caption(f'Exibindo 200 de {len(_df)} linhas')
+                st.dataframe(_df.head(100), use_container_width=True)
+                st.caption(f'Exibindo 100 de {len(_df)} linhas')
         else:
             st.markdown('<div class="matrix-none">Aguardando arquivo</div>', unsafe_allow_html=True)
         _f_lu = st.file_uploader('Largura Util (.xlsx ou .xlsb)', key='up_lu', label_visibility='collapsed')
 
     with _uc2:
-        st.markdown('<div class="param-box-title">Matriz Arruelas — arruelas</div>', unsafe_allow_html=True)
+        st.markdown('<div class="param-box-title">TABELA — Arruelas</div>', unsafe_allow_html=True)
         if _arr_ok:
             _df = st.session_state.df_arr
             st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas x {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
             with st.expander('Visualizar'):
-                st.dataframe(_df.head(200), use_container_width=True)
-                st.caption(f'Exibindo 200 de {len(_df)} linhas')
+                st.dataframe(_df.head(100), use_container_width=True)
+                st.caption(f'Exibindo 100 de {len(_df)} linhas')
         else:
             st.markdown('<div class="matrix-none">Aguardando arquivo</div>', unsafe_allow_html=True)
         _f_arr = st.file_uploader('Arruelas (.xlsx ou .xlsb)', key='up_arr', label_visibility='collapsed')
@@ -581,14 +579,14 @@ _arr_ok = st.session_state.df_arr is not None
 
 st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
-st.markdown('<div class="section-title">⚙️ Especificações do Material</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Especificações do Material</div>', unsafe_allow_html=True)
 st.markdown('<div class="param-box">', unsafe_allow_html=True)
 st.markdown('<div class="param-box-title">Identificação da Máquina</div>', unsafe_allow_html=True)
 _c1, _c2, _c3, _c4 = st.columns(4)
-machine    = _c1.selectbox('Máquina',     ['SJP07','SJP08','SJP09','SJP10'], key='machine')
-technology = _c2.selectbox('Tecnologia',  ['SMS','SMMS','SS','SSS','SSMS'],  key='technology')
-surfactant = _c3.selectbox('Surfactante', ['HFO','DBO','SBO','ZEB','NONE'],  key='surfactant')
-calender   = _c4.selectbox('Calandra',    ['OVAL','DIAMOND','FLAT','MICRO'], key='calender')
+machine    = _c1.selectbox('Máquina',     ['PAL01','PAL02','SJP05','SJP06','SJP07','SJP08','SJP09'], key='machine')
+technology = _c2.selectbox('Tecnologia',  ['SMS','SSS'],  key='technology')
+surfactant = _c3.selectbox('Surfactante', ['HFO','HFL','ZEB'],  key='surfactant')
+calender   = _c4.selectbox('Calandra',    ['OVAL','ESTRELA'], key='calender')
 st.markdown('</div>', unsafe_allow_html=True)
 
 _cm1, _cm2 = st.columns(2)
@@ -596,23 +594,23 @@ with _cm1:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
     st.markdown('<div class="param-box-title">Material</div>', unsafe_allow_html=True)
     _mc1, _mc2 = st.columns(2)
-    grammage      = _mc1.number_input('Gramatura (g/m²)', value=11.0, step=0.5,   format='%.1f', min_value=1.0)
-    linear_meters = _mc2.number_input('Metragem (m)',     value=13500, step=100,  min_value=100)
+    grammage      = _mc1.number_input('Gramatura (g/m²)', value=0.0, step=0.5,   format='%.1f', min_value=1.0)
+    linear_meters = _mc2.number_input('Metragem (m)',     value=0, step=100,  min_value=100)
     st.markdown('</div>', unsafe_allow_html=True)
 with _cm2:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
-    st.markdown('<div class="param-box-title">LU & Tolerância</div>', unsafe_allow_html=True)
+    st.markdown('<div class="param-box-title">Largura Útil & Refile</div>', unsafe_allow_html=True)
     _tc1, _tc2 = st.columns(2)
-    fator_lu_min = _tc1.number_input('Fator LU Mínima', value=0.90, step=0.01, format='%.2f', min_value=0.5, max_value=1.0)
-    tol_lu       = _tc2.number_input('Tolerância LU (%)', value=0.30, step=0.05, format='%.2f', min_value=0.0)
+    fator_lu_min = _tc1.number_input('%Utilização da LU', value=0.93, step=0.01, format='%.2f', min_value=0.5, max_value=1.0)
+    tol_lu       = _tc2.number_input('Avanço de Refile (%)', value=0.30, step=0.05, format='%.2f', min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="section-title">✂️ Restrições de Corte & Solver</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Restrições de Corte & Solver</div>', unsafe_allow_html=True)
 
 _rc1, _rc2 = st.columns(2)
 with _rc1:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
-    st.markdown('<div class="param-box-title">Corte Físico</div>', unsafe_allow_html=True)
+    st.markdown('<div class="param-box-title">Configuração Rebobinadeira</div>', unsafe_allow_html=True)
     _rr1, _rr2, _rr3 = st.columns(3)
     max_facas    = _rr1.number_input('Qtde Facas',           value=8,    step=1,   min_value=1)
     max_larg_esq = _rr2.number_input('Max Larguras/Esquema', value=2,    step=1,   min_value=1, max_value=5)
@@ -621,42 +619,42 @@ with _rc1:
 
 with _rc2:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
-    st.markdown('<div class="param-box-title">OTIF & Setups</div>', unsafe_allow_html=True)
+    st.markdown('<div class="param-box-title">In Full & Setups</div>', unsafe_allow_html=True)
     _rs1, _rs2, _rs3 = st.columns(3)
-    meta_otif     = _rs1.number_input('Meta OTIF (%)',       value=101.0, step=0.5,  format='%.1f', min_value=100.0, max_value=115.0)
+    meta_otif     = _rs1.number_input('Meta In Full (%)',       value=105.0, step=0.5,  format='%.1f', min_value=100.0, max_value=115.0)
     max_setups    = _rs2.number_input('Max Setups',          value=10,    step=1,    min_value=1)
-    setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=0.0,  step=1.0,  format='%.1f', min_value=0.0)
+    setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=70.0,  step=1.0,  format='%.1f', min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="param-box">', unsafe_allow_html=True)
 st.markdown('<div class="param-box-title">Custos & Penalidades</div>', unsafe_allow_html=True)
 _cp1, _cp2, _cp3, _cp4, _cp5 = st.columns(5)
-custo_tirada  = _cp1.number_input('Custo/Tirada',      value=50.0,   step=10.0)
-custo_setup   = _cp2.number_input('Custo Troca Faca',  value=8000.0, step=500.0)
-custo_estoque = _cp3.number_input('Custo Estoque',     value=5.0,    step=1.0)
-custo_falta   = _cp4.number_input('Custo Falta',       value=50.0,   step=5.0)
-bonus_eng     = _cp5.number_input('Bônus Engenharia',  value=15.0,   step=1.0)
+custo_tirada  = _cp1.number_input('Custo Tirada',      value=0.0,   step=10.0)
+custo_setup   = _cp2.number_input('Custo Troca Faca',  value=0.0, step=500.0)
+custo_estoque = _cp3.number_input('Custo Excesso Estoque',     value=0.0,    step=1.0)
+custo_falta   = _cp4.number_input('Custo Falta Material',       value=100.0,   step=5.0)
+bonus_eng     = _cp5.number_input('Custo Avanço Refile',  value=100.0,   step=1.0)
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 # ── DIAGNÓSTICO DE REGRAS (sempre visível, usa inputs atuais) ────────────────
-st.markdown('<div class="section-title">⚙️ Diagnóstico de Regras de Negócio</div>', unsafe_allow_html=True)
-_dstr_setup   = 'BAIXA — Prioridade: Reduzir SLU' if custo_setup < 3000 else 'ALTA — Prioridade: OEE / Evitar paradas'
-_dstr_estoque = 'FLEXÍVEL — Gera sobras para salvar SLU' if custo_estoque <= 5 else 'RÍGIDA — Evita sobras a todo custo'
-_dstr_falta   = 'PERMITIDA — Pode entregar a menos' if custo_falta <= 10 else 'PROIBIDA — Força In-Full de 100%'
+st.markdown('<div class="section-title">Diagnóstico de Regras de Negócio</div>', unsafe_allow_html=True)
+_dstr_setup   = 'BAIXA — Prioridade: Reduzir SLU' if custo_setup < 3000 else 'ALTA — Prioridade: Evitar paradas da rebobinadeira'
+_dstr_estoque = 'FLEXÍVEL — Gera estoque para salvar SLU' if custo_estoque <= 5 else 'RÍGIDA — Evita estoque a todo custo'
+_dstr_falta   = 'PERMITIDA — Pode entregar a menos' if custo_falta <= 10 else 'PROIBIDA — In-Full 100%'
 _dpct_over    = meta_otif - 100.0
 _dzeb         = surfactant == 'ZEB'
 _dextrusao    = f'ZEBRADO ({surfactant})' if _dzeb else f'HOMOGÊNEO ({surfactant})'
 _diag_html = (
     '<div class="info-box">'
     f'<b>Máquina:</b> {machine} | {technology} | {surfactant} | {calender} &nbsp;|&nbsp;'
-    f'<b>Fator LU Min:</b> {fator_lu_min:.2f} &nbsp;|&nbsp;'
-    f'<b>Tolerância LU:</b> {tol_lu:.2f}%<br>'
+    f'<b>%Utilização da LU:</b> {fator_lu_min:.2f} &nbsp;|&nbsp;'
+    f'<b>Avanço de Refile (%):</b> {tol_lu:.2f}%<br>'
     f'<b>Extrusão:</b> {_dextrusao} &nbsp;|&nbsp;'
     f'<b>Max Facas:</b> {max_facas} &nbsp;|&nbsp;'
     f'<b>Max Larg/Esquema:</b> {max_larg_esq} &nbsp;|&nbsp;'
     f'<b>Dif. Mín. Larg:</b> {diff_limit:.0f}mm<br>'
-    f'<b>Meta OTIF:</b> {meta_otif:.1f}% (tolerância overstock: {_dpct_over:.1f}%) &nbsp;|&nbsp;'
+    f'<b>Meta In Full (%):</b> {meta_otif:.1f}% (tolerância overstock: {_dpct_over:.1f}%) &nbsp;|&nbsp;'
     f'<b>Max Setups:</b> {max_setups} &nbsp;|&nbsp;'
     f'<b>Ocup. Mín. Eixo:</b> {setup_min_pct:.1f}%<br>'
     f'<b>Troca Faca:</b> {_dstr_setup}<br>'
@@ -667,7 +665,7 @@ _diag_html = (
 st.markdown(_diag_html, unsafe_allow_html=True)
 st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
-st.markdown('<div class="section-title">📋 Demandas de Venda</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Demandas de Venda</div>', unsafe_allow_html=True)
 
 _hc1, _hc2, _hc3 = st.columns([3, 3, 1])
 _hc1.markdown('**Largura Líquida (mm)**')
@@ -752,9 +750,9 @@ if st.session_state.simulated and st.session_state.result:
     if r["tem_slu_negativo"]:
         st.markdown("""
         <div class="warn-box">
-        ⚠️ <b>ATENÇÃO: PLANO COM SLU NEGATIVO (AVANÇO DE CALANDRA) IDENTIFICADO</b><br>
+        ⚠️ <b>ATENÇÃO: PLANO COM SLU NEGATIVO (AVANÇO DA LARGURA ÚTIL) IDENTIFICADO</b><br>
         <span style="font-size:12px;color:#94a3b8;">
-        Requer validação e assinatura obrigatória da Engenharia de Processos antes da produção.
+        Requer aprovação obrigatória da Engenharia de Processos antes da produção.
         </span>
         </div>
         """, unsafe_allow_html=True)
@@ -825,7 +823,7 @@ if st.session_state.simulated and st.session_state.result:
     st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
     # ── PLANO DE CORTE (Cards) ────────────────────────────────────────────────
-    st.markdown('<div class="section-title">🔲 Plano de Corte — Esquemas Ativos</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Plano de Corte — Esquemas Ativos</div>', unsafe_allow_html=True)
 
     cols_combo = st.columns(2)
     for ci, setup in enumerate(r["plano"]):
@@ -929,7 +927,7 @@ if st.session_state.simulated and st.session_state.result:
     st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
     # ── BALANÇO DE MASSA ──────────────────────────────────────────────────────
-    st.markdown('<div class="section-title">📦 Resumo de Atendimento — Balanço de Massa</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Resumo de Atendimento — Balanço de Massa</div>', unsafe_allow_html=True)
 
     rows = []
     for b in r["balanco"]:
