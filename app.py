@@ -355,448 +355,464 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-tab_otim, tab_mat = st.tabs(["⚡ Otimizador", "📂 Matrizes de Referência"])
+# ── HELPER: ler xlsx ou xlsb ─────────────────────────────────────────────────
+def _read_any_excel(file_obj, sheet_hint=None):
+    """Lê .xlsx/.xlsb/.xls. Tenta aba por nome, senão usa sheet 0."""
+    name = getattr(file_obj, 'name', '')
+    is_xlsb = name.lower().endswith('.xlsb')
+    if is_xlsb:
+        try:
+            import pyxlsb
+            if sheet_hint:
+                try:
+                    return pd.read_excel(file_obj, sheet_name=sheet_hint, engine='pyxlsb')
+                except Exception:
+                    file_obj.seek(0)
+            return pd.read_excel(file_obj, sheet_name=0, engine='pyxlsb')
+        except ImportError:
+            raise ImportError("Biblioteca pyxlsb não instalada. Adicione 'pyxlsb' ao requirements.txt.")
+    else:
+        if sheet_hint:
+            try:
+                return pd.read_excel(file_obj, sheet_name=sheet_hint)
+            except Exception:
+                file_obj.seek(0)
+        return pd.read_excel(file_obj, sheet_name=0)
 
-# ── TAB MATRIZES ─────────────────────────────────────────────────────────────
-with tab_mat:
-    st.markdown('<div class="section-title">📂 Matrizes de Referência</div>', unsafe_allow_html=True)
+# ── PÁGINA ÚNICA — OTIMIZADOR ─────────────────────────────────────────────────
+
+# ── Bloco de uploads das matrizes (compacto, no topo) ─────────────────────────
+_lu_ok  = st.session_state.df_lu  is not None
+_arr_ok = st.session_state.df_arr is not None
+
+with st.expander(
+    ("✅ Matrizes carregadas" if (_lu_ok and _arr_ok)
+     else "⚠️  Matrizes de Referência — clique para carregar"),
+    expanded=not (_lu_ok and _arr_ok)
+):
     st.markdown(
-        '<div class="info-box">Faça o upload uma única vez. As matrizes ficam salvas na sessão. '
-        'Só é necessário reenviar quando houver atualização dos dados.</div>',
+        '<div class="info-box" style="margin-top:0">Faça o upload uma única vez (.xlsx ou .xlsb). '
+        'As matrizes ficam salvas na sessão — só reenvie quando houver atualização.</div>',
         unsafe_allow_html=True)
 
-    _col_lu, _col_arr = st.columns(2)
+    _uc1, _uc2 = st.columns(2)
 
-    with _col_lu:
-        st.markdown('<div class="param-box-title">📐 Matriz LU — Largura Útil</div>', unsafe_allow_html=True)
-        if st.session_state.df_lu is not None:
+    with _uc1:
+        st.markdown('<div class="param-box-title">📐 Matriz LU — largura_util.xlsb</div>', unsafe_allow_html=True)
+        if _lu_ok:
             _df = st.session_state.df_lu
             st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas × {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
             with st.expander('Visualizar'):
                 st.dataframe(_df, use_container_width=True)
         else:
-            st.markdown('<div class="matrix-none">⬜ Nenhuma matriz carregada</div>', unsafe_allow_html=True)
-        _f_lu = st.file_uploader('Upload Matriz_LU (.xlsx)', type=['xlsx'], key='up_lu')
+            st.markdown('<div class="matrix-none">⬜ Aguardando arquivo</div>', unsafe_allow_html=True)
+        _f_lu = st.file_uploader('largura_util (.xlsx / .xlsb)', key='up_lu', label_visibility='collapsed')
         if _f_lu:
             try:
-                try:
-                    _df_new = pd.read_excel(_f_lu, sheet_name='Matriz_LU')
-                except:
-                    _df_new = pd.read_excel(_f_lu, sheet_name=0)
+                _df_new = _read_any_excel(_f_lu, sheet_hint='Matriz_LU')
                 st.session_state.df_lu = _df_new
                 st.success(f'Matriz LU atualizada: {len(_df_new)} linhas')
                 st.rerun()
             except Exception as _e:
-                st.error(f'Erro: {_e}')
+                st.error(f'Erro ao ler Matriz LU: {_e}')
 
-    with _col_arr:
-        st.markdown('<div class="param-box-title">🔩 Matriz Arruelas / Kerf</div>', unsafe_allow_html=True)
-        if st.session_state.df_arr is not None:
+    with _uc2:
+        st.markdown('<div class="param-box-title">🔩 Matriz Arruelas — arruelas.xlsb</div>', unsafe_allow_html=True)
+        if _arr_ok:
             _df = st.session_state.df_arr
             st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas × {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
             with st.expander('Visualizar'):
                 st.dataframe(_df, use_container_width=True)
         else:
-            st.markdown('<div class="matrix-none">⬜ Nenhuma matriz carregada</div>', unsafe_allow_html=True)
-        _f_arr = st.file_uploader('Upload Matriz_Arruelas (.xlsx)', type=['xlsx'], key='up_arr')
+            st.markdown('<div class="matrix-none">⬜ Aguardando arquivo</div>', unsafe_allow_html=True)
+        _f_arr = st.file_uploader('arruelas (.xlsx / .xlsb)', key='up_arr', label_visibility='collapsed')
         if _f_arr:
             try:
-                try:
-                    _df_new = pd.read_excel(_f_arr, sheet_name='Matriz_Arruelas')
-                except:
-                    _df_new = pd.read_excel(_f_arr, sheet_name=0)
+                _df_new = _read_any_excel(_f_arr, sheet_hint='Matriz_Arruelas')
                 st.session_state.df_arr = _df_new
                 st.success(f'Matriz Arruelas atualizada: {len(_df_new)} linhas')
                 st.rerun()
             except Exception as _e:
-                st.error(f'Erro: {_e}')
+                st.error(f'Erro ao ler Matriz Arruelas: {_e}')
 
-# ── TAB OTIMIZADOR ───────────────────────────────────────────────────────────
-with tab_otim:
+# ── Reatribuir flags após possíveis uploads acima ────────────────────────────
+_lu_ok  = st.session_state.df_lu  is not None
+_arr_ok = st.session_state.df_arr is not None
 
-    _lu_ok  = st.session_state.df_lu  is not None
-    _arr_ok = st.session_state.df_arr is not None
+st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
-    if not _lu_ok or not _arr_ok:
-        _falt = []
-        if not _lu_ok:  _falt.append('Matriz LU')
-        if not _arr_ok: _falt.append('Matriz Arruelas')
-        st.warning(f"⚠️ Acesse a aba **Matrizes de Referência** e faça o upload de: {', '.join(_falt)}")
+st.markdown('<div class="section-title">⚙️ Especificações do Material</div>', unsafe_allow_html=True)
+st.markdown('<div class="param-box">', unsafe_allow_html=True)
+st.markdown('<div class="param-box-title">Identificação da Máquina</div>', unsafe_allow_html=True)
+_c1, _c2, _c3, _c4 = st.columns(4)
+machine    = _c1.selectbox('Máquina',     ['SJP07','SJP08','SJP09','SJP10'], key='machine')
+technology = _c2.selectbox('Tecnologia',  ['SMS','SMMS','SS','SSS','SSMS'],  key='technology')
+surfactant = _c3.selectbox('Surfactante', ['HFO','DBO','SBO','ZEB','NONE'],  key='surfactant')
+calender   = _c4.selectbox('Calandra',    ['OVAL','DIAMOND','FLAT','MICRO'], key='calender')
+st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="section-title">⚙️ Especificações do Material</div>', unsafe_allow_html=True)
+_cm1, _cm2 = st.columns(2)
+with _cm1:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
-    st.markdown('<div class="param-box-title">Identificação da Máquina</div>', unsafe_allow_html=True)
-    _c1, _c2, _c3, _c4 = st.columns(4)
-    machine    = _c1.selectbox('Máquina',     ['SJP07','SJP08','SJP09','SJP10'], key='machine')
-    technology = _c2.selectbox('Tecnologia',  ['SMS','SMMS','SS','SSS','SSMS'],  key='technology')
-    surfactant = _c3.selectbox('Surfactante', ['HFO','DBO','SBO','ZEB','NONE'],  key='surfactant')
-    calender   = _c4.selectbox('Calandra',    ['OVAL','DIAMOND','FLAT','MICRO'], key='calender')
+    st.markdown('<div class="param-box-title">Material</div>', unsafe_allow_html=True)
+    _mc1, _mc2 = st.columns(2)
+    grammage      = _mc1.number_input('Gramatura (g/m²)', value=11.0, step=0.5,   format='%.1f', min_value=1.0)
+    linear_meters = _mc2.number_input('Metragem (m)',     value=13500, step=100,  min_value=100)
+    st.markdown('</div>', unsafe_allow_html=True)
+with _cm2:
+    st.markdown('<div class="param-box">', unsafe_allow_html=True)
+    st.markdown('<div class="param-box-title">LU & Tolerância</div>', unsafe_allow_html=True)
+    _tc1, _tc2 = st.columns(2)
+    fator_lu_min = _tc1.number_input('Fator LU Mínima', value=0.90, step=0.01, format='%.2f', min_value=0.5, max_value=1.0)
+    tol_lu       = _tc2.number_input('Tolerância LU (%)', value=0.30, step=0.05, format='%.2f', min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    _cm1, _cm2 = st.columns(2)
-    with _cm1:
-        st.markdown('<div class="param-box">', unsafe_allow_html=True)
-        st.markdown('<div class="param-box-title">Material</div>', unsafe_allow_html=True)
-        _mc1, _mc2 = st.columns(2)
-        grammage      = _mc1.number_input('Gramatura (g/m²)', value=11.0, step=0.5,   format='%.1f', min_value=1.0)
-        linear_meters = _mc2.number_input('Metragem (m)',     value=13500, step=100,  min_value=100)
-        st.markdown('</div>', unsafe_allow_html=True)
-    with _cm2:
-        st.markdown('<div class="param-box">', unsafe_allow_html=True)
-        st.markdown('<div class="param-box-title">LU & Tolerância</div>', unsafe_allow_html=True)
-        _tc1, _tc2 = st.columns(2)
-        fator_lu_min = _tc1.number_input('Fator LU Mínima', value=0.90, step=0.01, format='%.2f', min_value=0.5, max_value=1.0)
-        tol_lu       = _tc2.number_input('Tolerância LU (%)', value=0.30, step=0.05, format='%.2f', min_value=0.0)
-        st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">✂️ Restrições de Corte & Solver</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section-title">✂️ Restrições de Corte & Solver</div>', unsafe_allow_html=True)
-
-    _rc1, _rc2 = st.columns(2)
-    with _rc1:
-        st.markdown('<div class="param-box">', unsafe_allow_html=True)
-        st.markdown('<div class="param-box-title">Corte Físico</div>', unsafe_allow_html=True)
-        _rr1, _rr2, _rr3 = st.columns(3)
-        max_facas    = _rr1.number_input('Qtde Facas',           value=8,    step=1,   min_value=1)
-        max_larg_esq = _rr2.number_input('Max Larguras/Esquema', value=2,    step=1,   min_value=1, max_value=5)
-        diff_limit   = _rr3.number_input('Dif. Mín. Larg. (mm)', value=30.0, step=5.0, min_value=0.0)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with _rc2:
-        st.markdown('<div class="param-box">', unsafe_allow_html=True)
-        st.markdown('<div class="param-box-title">OTIF & Setups</div>', unsafe_allow_html=True)
-        _rs1, _rs2, _rs3 = st.columns(3)
-        meta_otif     = _rs1.number_input('Meta OTIF (%)',       value=101.0, step=0.5,  format='%.1f', min_value=100.0, max_value=115.0)
-        max_setups    = _rs2.number_input('Max Setups',          value=10,    step=1,    min_value=1)
-        setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=0.0,  step=1.0,  format='%.1f', min_value=0.0)
-        st.markdown('</div>', unsafe_allow_html=True)
-
+_rc1, _rc2 = st.columns(2)
+with _rc1:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
-    st.markdown('<div class="param-box-title">Custos & Penalidades</div>', unsafe_allow_html=True)
-    _cp1, _cp2, _cp3, _cp4, _cp5 = st.columns(5)
-    custo_tirada  = _cp1.number_input('Custo/Tirada',      value=50.0,   step=10.0)
-    custo_setup   = _cp2.number_input('Custo Troca Faca',  value=8000.0, step=500.0)
-    custo_estoque = _cp3.number_input('Custo Estoque',     value=5.0,    step=1.0)
-    custo_falta   = _cp4.number_input('Custo Falta',       value=50.0,   step=5.0)
-    bonus_eng     = _cp5.number_input('Bônus Engenharia',  value=15.0,   step=1.0)
+    st.markdown('<div class="param-box-title">Corte Físico</div>', unsafe_allow_html=True)
+    _rr1, _rr2, _rr3 = st.columns(3)
+    max_facas    = _rr1.number_input('Qtde Facas',           value=8,    step=1,   min_value=1)
+    max_larg_esq = _rr2.number_input('Max Larguras/Esquema', value=2,    step=1,   min_value=1, max_value=5)
+    diff_limit   = _rr3.number_input('Dif. Mín. Larg. (mm)', value=30.0, step=5.0, min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
+with _rc2:
+    st.markdown('<div class="param-box">', unsafe_allow_html=True)
+    st.markdown('<div class="param-box-title">OTIF & Setups</div>', unsafe_allow_html=True)
+    _rs1, _rs2, _rs3 = st.columns(3)
+    meta_otif     = _rs1.number_input('Meta OTIF (%)',       value=101.0, step=0.5,  format='%.1f', min_value=100.0, max_value=115.0)
+    max_setups    = _rs2.number_input('Max Setups',          value=10,    step=1,    min_value=1)
+    setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=0.0,  step=1.0,  format='%.1f', min_value=0.0)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="param-box">', unsafe_allow_html=True)
+st.markdown('<div class="param-box-title">Custos & Penalidades</div>', unsafe_allow_html=True)
+_cp1, _cp2, _cp3, _cp4, _cp5 = st.columns(5)
+custo_tirada  = _cp1.number_input('Custo/Tirada',      value=50.0,   step=10.0)
+custo_setup   = _cp2.number_input('Custo Troca Faca',  value=8000.0, step=500.0)
+custo_estoque = _cp3.number_input('Custo Estoque',     value=5.0,    step=1.0)
+custo_falta   = _cp4.number_input('Custo Falta',       value=50.0,   step=5.0)
+bonus_eng     = _cp5.number_input('Bônus Engenharia',  value=15.0,   step=1.0)
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
+
+st.markdown('<div class="section-title">📋 Demandas de Venda</div>', unsafe_allow_html=True)
+
+_hc1, _hc2, _hc3 = st.columns([3, 3, 1])
+_hc1.markdown('**Largura Líquida (mm)**')
+_hc2.markdown('**Demanda (kg)**')
+
+_to_delete = []
+for _i, _order in enumerate(st.session_state.orders):
+    _oc1, _oc2, _oc3 = st.columns([3, 3, 1])
+    _new_larg = _oc1.number_input('', value=int(_order['largura']), step=1, min_value=1,
+                                   key=f"larg_{_order['id']}", label_visibility='collapsed')
+    _new_kg   = _oc2.number_input('', value=float(_order['kg']),   step=100.0, min_value=0.0,
+                                   key=f"kg_{_order['id']}",   label_visibility='collapsed')
+    if _oc3.button('🗑', key=f"del_{_order['id']}"):
+        _to_delete.append(_order['id'])
+    st.session_state.orders[_i]['largura'] = _new_larg
+    st.session_state.orders[_i]['kg']      = _new_kg
+
+for _did in _to_delete:
+    st.session_state.orders = [o for o in st.session_state.orders if o['id'] != _did]
+    st.rerun()
+
+if st.button('＋ Adicionar Largura'):
+    _new_id = str(max((int(o['id']) for o in st.session_state.orders), default=0) + 1)
+    st.session_state.orders.append({'id': _new_id, 'largura': 300, 'kg': 1000.0})
+    st.rerun()
+
+st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
+
+_ready = (_lu_ok and _arr_ok
+          and len(st.session_state.orders) > 0
+          and all(o['largura'] > 0 and o['kg'] > 0 for o in st.session_state.orders))
+
+if st.button('⚡  OTIMIZAR ESQUEMA DE CORTE', disabled=not _ready):
+    _config_data = {
+        'Maquina':              machine,
+        'Tecnologia':           technology,
+        'Surfactante':          surfactant,
+        'Calandra':             calender,
+        'Gramatura_GSM':        grammage,
+        'Metragem_mL':          linear_meters,
+        'Qtde_facas':           max_facas,
+        'Max_Larguras_Esquema': max_larg_esq,
+        'Limitação_dif_larg':   diff_limit,
+        'Fator_LU_Minima':      fator_lu_min,
+        'Tolerancia_LU':        -tol_lu,
+        'Meta_OTIF':            meta_otif / 100.0,
+        'Max_Setups':           max_setups,
+        'Setup_Min_Eixo_Pct':   setup_min_pct,
+        'Custo_por_Tirada':     custo_tirada,
+        'Custo_Troca_Faca':     custo_setup,
+        'Custo_Estoque_Parado': custo_estoque,
+        'Custo_Falta_Pedido':   custo_falta,
+        'Bonus_Engenharia':     bonus_eng,
+    }
+    _df_cfg = pd.DataFrame(list(_config_data.items()), columns=['param', 'value'])
+    _df_ped = pd.DataFrame([
+        {'Largura_mm': o['largura'], 'Valor_Kg': o['kg']}
+        for o in st.session_state.orders
+    ])
+    with st.spinner('⏳ Minerando esquemas e resolvendo ILP com SCIP...'):
+        _t0 = time.time()
+        _result, _err = run_optimization(
+            _df_cfg, _df_ped,
+            st.session_state.df_lu,
+            st.session_state.df_arr,
+        )
+        _elapsed = time.time() - _t0
+    if _err:
+        st.error(_err)
+    else:
+        _result['elapsed'] = _elapsed
+        st.session_state.result    = _result
+        st.session_state.simulated = True
+
+elif not _ready and (_lu_ok and _arr_ok):
+    st.info('Preencha todas as demandas para habilitar o otimizador.')
+
+if st.session_state.simulated and st.session_state.result:
+    r = st.session_state.result
+
+    # ── ALERTA SLU NEGATIVO ───────────────────────────────────────────────────
+    if r["tem_slu_negativo"]:
+        st.markdown("""
+        <div class="warn-box">
+        ⚠️ <b>ATENÇÃO: PLANO COM SLU NEGATIVO (AVANÇO DE CALANDRA) IDENTIFICADO</b><br>
+        <span style="font-size:12px;color:#94a3b8;">
+        Requer validação e assinatura obrigatória da Engenharia de Processos antes da produção.
+        </span>
+        </div>
+        """, unsafe_allow_html=True)
+
     st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section-title">📋 Demandas de Venda</div>', unsafe_allow_html=True)
+    # ── KPI PRINCIPAL ─────────────────────────────────────────────────────────
+    st.markdown('<div class="section-title">📊 KPI Final da Campanha</div>', unsafe_allow_html=True)
 
-    _hc1, _hc2, _hc3 = st.columns([3, 3, 1])
-    _hc1.markdown('**Largura Líquida (mm)**')
-    _hc2.markdown('**Demanda (kg)**')
+    slu_color  = "#10b981" if r["slu_final_pct"] < 1.0 else ("#f59e0b" if r["slu_final_pct"] < 1.5 else "#ef4444")
+    inf_color  = "#10b981" if r["total_infull"] >= 98 else "#ef4444"
+    ext_color  = "#3b82f6"
+    rj_color   = "#7c3aed"
+    est_color  = "#f59e0b" if r["t_kg_estoque"] > 0 else "#10b981"
+    falt_color = "#ef4444" if r["t_kg_falta"] > 0 else "#10b981"
 
-    _to_delete = []
-    for _i, _order in enumerate(st.session_state.orders):
-        _oc1, _oc2, _oc3 = st.columns([3, 3, 1])
-        _new_larg = _oc1.number_input('', value=int(_order['largura']), step=1, min_value=1,
-                                       key=f"larg_{_order['id']}", label_visibility='collapsed')
-        _new_kg   = _oc2.number_input('', value=float(_order['kg']),   step=100.0, min_value=0.0,
-                                       key=f"kg_{_order['id']}",   label_visibility='collapsed')
-        if _oc3.button('🗑', key=f"del_{_order['id']}"):
-            _to_delete.append(_order['id'])
-        st.session_state.orders[_i]['largura'] = _new_larg
-        st.session_state.orders[_i]['kg']      = _new_kg
+    st.markdown(f"""
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-top-color:{slu_color}">
+        <div class="kpi-label">SLU Global</div>
+        <div class="kpi-value" style="color:{slu_color}">{r["slu_final_pct"]:.2f}%</div>
+        <div class="kpi-desc">Perda lateral s/ extrusão</div>
+      </div>
+      <div class="kpi-card" style="border-top-color:{ext_color}">
+        <div class="kpi-label">Massa Extrusada</div>
+        <div class="kpi-value" style="color:{ext_color}">{r["t_kg_extrusado"]:,.0f} kg</div>
+        <div class="kpi-desc">Líquida: {r["t_kg_prod_liq"]:,.0f} kg</div>
+      </div>
+      <div class="kpi-card" style="border-top-color:{rj_color}">
+        <div class="kpi-label">Jumbos Físicos</div>
+        <div class="kpi-value" style="color:{rj_color}">{r["kpi_rjs_total"]}</div>
+        <div class="kpi-desc">{r["kpi_rjs_cheios"]} completos + {r["kpi_rjs_parciais"]} fração</div>
+      </div>
+      <div class="kpi-card" style="border-top-color:{inf_color}">
+        <div class="kpi-label">In-Full Global</div>
+        <div class="kpi-value" style="color:{inf_color}">{r["total_infull"]:.1f}%</div>
+        <div class="kpi-desc">{r["t_runs"]} tiradas totais</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    for _did in _to_delete:
-        st.session_state.orders = [o for o in st.session_state.orders if o['id'] != _did]
-        st.rerun()
-
-    if st.button('＋ Adicionar Largura'):
-        _new_id = str(max((int(o['id']) for o in st.session_state.orders), default=0) + 1)
-        st.session_state.orders.append({'id': _new_id, 'largura': 300, 'kg': 1000.0})
-        st.rerun()
+    # segunda linha de KPIs
+    st.markdown(f"""
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-top-color:#64748b">
+        <div class="kpi-label">Massa Pedida</div>
+        <div class="kpi-value" style="color:#94a3b8">{r["t_kg_vend"]:,.0f} kg</div>
+        <div class="kpi-desc">Demanda total</div>
+      </div>
+      <div class="kpi-card" style="border-top-color:#ef4444">
+        <div class="kpi-label">Refugo Facas</div>
+        <div class="kpi-value" style="color:#ef4444">{r["t_kg_kerf"]:,.0f} kg</div>
+        <div class="kpi-desc">Arruelas / Kerf</div>
+      </div>
+      <div class="kpi-card" style="border-top-color:{est_color}">
+        <div class="kpi-label">Estoque Gerado</div>
+        <div class="kpi-value" style="color:{est_color}">{r["t_kg_estoque"]:,.0f} kg</div>
+        <div class="kpi-desc">Sobra acima da demanda</div>
+      </div>
+      <div class="kpi-card" style="border-top-color:{falt_color}">
+        <div class="kpi-label">Falta em Pedidos</div>
+        <div class="kpi-value" style="color:{falt_color}">{r["t_kg_falta"]:,.0f} kg</div>
+        <div class="kpi-desc">Dívida com clientes</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
-    _ready = (_lu_ok and _arr_ok
-              and len(st.session_state.orders) > 0
-              and all(o['largura'] > 0 and o['kg'] > 0 for o in st.session_state.orders))
+    # ── PLANO DE CORTE (Cards) ────────────────────────────────────────────────
+    st.markdown('<div class="section-title">🔲 Plano de Corte — Esquemas Ativos</div>', unsafe_allow_html=True)
 
-    if st.button('⚡  OTIMIZAR ESQUEMA DE CORTE', disabled=not _ready):
-        _config_data = {
-            'Maquina':              machine,
-            'Tecnologia':           technology,
-            'Surfactante':          surfactant,
-            'Calandra':             calender,
-            'Gramatura_GSM':        grammage,
-            'Metragem_mL':          linear_meters,
-            'Qtde_facas':           max_facas,
-            'Max_Larguras_Esquema': max_larg_esq,
-            'Limitação_dif_larg':   diff_limit,
-            'Fator_LU_Minima':      fator_lu_min,
-            'Tolerancia_LU':        -tol_lu,
-            'Meta_OTIF':            meta_otif / 100.0,
-            'Max_Setups':           max_setups,
-            'Setup_Min_Eixo_Pct':   setup_min_pct,
-            'Custo_por_Tirada':     custo_tirada,
-            'Custo_Troca_Faca':     custo_setup,
-            'Custo_Estoque_Parado': custo_estoque,
-            'Custo_Falta_Pedido':   custo_falta,
-            'Bonus_Engenharia':     bonus_eng,
-        }
-        _df_cfg = pd.DataFrame(list(_config_data.items()), columns=['param', 'value'])
-        _df_ped = pd.DataFrame([
-            {'Largura_mm': o['largura'], 'Valor_Kg': o['kg']}
-            for o in st.session_state.orders
-        ])
-        with st.spinner('⏳ Minerando esquemas e resolvendo ILP com SCIP...'):
-            _t0 = time.time()
-            _result, _err = run_optimization(
-                _df_cfg, _df_ped,
-                st.session_state.df_lu,
-                st.session_state.df_arr,
-            )
-            _elapsed = time.time() - _t0
-        if _err:
-            st.error(_err)
-        else:
-            _result['elapsed'] = _elapsed
-            st.session_state.result    = _result
-            st.session_state.simulated = True
+    cols_combo = st.columns(2)
+    for ci, setup in enumerate(r["plano"]):
+        with cols_combo[ci % 2]:
+            slu = setup["slu"]
+            if slu < -0.001:
+                badge = f'<span class="slu-neg-badge">SLU {slu:.2f}% ⚠️ Avanço</span>'
+            elif slu > 1.3:
+                badge = f'<span class="waste-badge-red">SLU {slu:.2f}%</span>'
+            elif slu > 1.0:
+                badge = f'<span class="waste-badge-orange">SLU {slu:.2f}%</span>'
+            else:
+                badge = f'<span class="waste-badge-green">SLU {slu:.2f}%</span>'
 
-    elif not _ready and (_lu_ok and _arr_ok):
-        st.info('Preencha todas as demandas para habilitar o otimizador.')
+            # Mapa visual de corte
+            LU_NOM = r["LU_NOMINAL"]
+            waste_mm = round(LU_NOM - setup["l_real"], 2)
+            map_html = '<div class="cut-map">'
+            for k, w in enumerate(setup["widths"]):
+                flex = w * setup["rollCounts"][k]
+                map_html += f'<div class="cut-segment" style="flex:{flex}"><span class="cut-label">{int(w)}</span><span class="cut-count">{setup["rollCounts"][k]}x</span></div>'
+            waste_flex = max(abs(waste_mm), 5)
+            map_html += f'<div class="cut-segment-waste" style="flex:{waste_flex}"><span class="cut-waste-label">{waste_mm:+.1f}</span></div>'
+            map_html += '</div>'
 
-    if st.session_state.simulated and st.session_state.result:
-        r = st.session_state.result
-    
-        # ── ALERTA SLU NEGATIVO ───────────────────────────────────────────────────
-        if r["tem_slu_negativo"]:
-            st.markdown("""
-            <div class="warn-box">
-            ⚠️ <b>ATENÇÃO: PLANO COM SLU NEGATIVO (AVANÇO DE CALANDRA) IDENTIFICADO</b><br>
-            <span style="font-size:12px;color:#94a3b8;">
-            Requer validação e assinatura obrigatória da Engenharia de Processos antes da produção.
-            </span>
+            prog_w = min(max(abs(slu), 0), 100)
+            progress_html = f"""
+            <div class="progress-wrap">
+              <div class="progress-label"><span>SLU</span><span style="color:#ef4444;">{slu:.2f}%</span></div>
+              <div class="progress-track"><div class="progress-fill" style="width:{prog_w}%"></div></div>
+            </div>"""
+
+            metrics_html = f"""
+            <div class="metric-row">
+              <div class="metric-mini">
+                <div class="metric-mini-label">Tiradas</div>
+                <div class="metric-mini-value" style="color:white">{setup["runs"]}</div>
+              </div>
+              <div class="metric-mini">
+                <div class="metric-mini-label">L. Real</div>
+                <div class="metric-mini-value" style="color:#7c3aed">{setup["l_real"]:.1f}<span style="font-size:10px">mm</span></div>
+              </div>
+              <div class="metric-mini">
+                <div class="metric-mini-label">Kg Setup</div>
+                <div class="metric-mini-value" style="color:#3b82f6">{setup["kg_lreal"]:,.0f}<span style="font-size:10px">kg</span></div>
+              </div>
+              <div class="metric-mini">
+                <div class="metric-mini-label">Jumbos</div>
+                <div class="metric-mini-value" style="color:#94a3b8">{setup["jumbos_cheios"]}<span style="font-size:10px">+frac</span></div>
+              </div>
+            </div>"""
+
+            detail_rows = ""
+            for k, w in enumerate(setup["widths"]):
+                kerf = setup["kerfs"][k]
+                cnt  = setup["rollCounts"][k]
+                detail_rows += f"""
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;">
+                  <div>
+                    <div style="font-size:11px;font-weight:900;color:#e2e8f0">{int(w)} mm</div>
+                    <div style="font-size:9px;color:#475569">Kerf: +{kerf:g}mm</div>
+                  </div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#7c3aed">{cnt}x</div>
+                  <div style="text-align:right">
+                    <div style="font-size:11px;font-weight:700;color:#94a3b8">{int(w+kerf)} mm bruto</div>
+                  </div>
+                </div>"""
+
+            jumbo_str = f"{setup['jumbos_cheios']} RJ(s) completo(s)"
+            if setup["runs_resto"] > 0:
+                jumbo_str += f" + 1 fração ({setup['runs_resto']} tiradas)"
+
+            st.markdown(f"""
+            <div class="combo-card">
+              <div class="combo-header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span class="combo-id">{setup["id"]}</span>
+                  <span style="font-size:11px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">{setup["tipo"]}</span>
+                </div>
+                {badge}
+              </div>
+              {map_html}
+              {progress_html}
+              {metrics_html}
+              <div style="margin-top:12px;padding:10px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:10px;color:#64748b;">
+                🏭 Consumo Extrusão: <b style="color:#94a3b8">{jumbo_str}</b>
+              </div>
+              <div style="margin-top:16px;padding-top:16px;border-top:1px solid #1e293b;">
+                <div style="font-size:9px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Larguras do Esquema</div>
+                {detail_rows}
+              </div>
             </div>
             """, unsafe_allow_html=True)
-    
-        st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
-    
-        # ── KPI PRINCIPAL ─────────────────────────────────────────────────────────
-        st.markdown('<div class="section-title">📊 KPI Final da Campanha</div>', unsafe_allow_html=True)
-    
-        slu_color  = "#10b981" if r["slu_final_pct"] < 1.0 else ("#f59e0b" if r["slu_final_pct"] < 1.5 else "#ef4444")
-        inf_color  = "#10b981" if r["total_infull"] >= 98 else "#ef4444"
-        ext_color  = "#3b82f6"
-        rj_color   = "#7c3aed"
-        est_color  = "#f59e0b" if r["t_kg_estoque"] > 0 else "#10b981"
-        falt_color = "#ef4444" if r["t_kg_falta"] > 0 else "#10b981"
-    
-        st.markdown(f"""
-        <div class="kpi-grid">
-          <div class="kpi-card" style="border-top-color:{slu_color}">
-            <div class="kpi-label">SLU Global</div>
-            <div class="kpi-value" style="color:{slu_color}">{r["slu_final_pct"]:.2f}%</div>
-            <div class="kpi-desc">Perda lateral s/ extrusão</div>
-          </div>
-          <div class="kpi-card" style="border-top-color:{ext_color}">
-            <div class="kpi-label">Massa Extrusada</div>
-            <div class="kpi-value" style="color:{ext_color}">{r["t_kg_extrusado"]:,.0f} kg</div>
-            <div class="kpi-desc">Líquida: {r["t_kg_prod_liq"]:,.0f} kg</div>
-          </div>
-          <div class="kpi-card" style="border-top-color:{rj_color}">
-            <div class="kpi-label">Jumbos Físicos</div>
-            <div class="kpi-value" style="color:{rj_color}">{r["kpi_rjs_total"]}</div>
-            <div class="kpi-desc">{r["kpi_rjs_cheios"]} completos + {r["kpi_rjs_parciais"]} fração</div>
-          </div>
-          <div class="kpi-card" style="border-top-color:{inf_color}">
-            <div class="kpi-label">In-Full Global</div>
-            <div class="kpi-value" style="color:{inf_color}">{r["total_infull"]:.1f}%</div>
-            <div class="kpi-desc">{r["t_runs"]} tiradas totais</div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-        # segunda linha de KPIs
-        st.markdown(f"""
-        <div class="kpi-grid">
-          <div class="kpi-card" style="border-top-color:#64748b">
-            <div class="kpi-label">Massa Pedida</div>
-            <div class="kpi-value" style="color:#94a3b8">{r["t_kg_vend"]:,.0f} kg</div>
-            <div class="kpi-desc">Demanda total</div>
-          </div>
-          <div class="kpi-card" style="border-top-color:#ef4444">
-            <div class="kpi-label">Refugo Facas</div>
-            <div class="kpi-value" style="color:#ef4444">{r["t_kg_kerf"]:,.0f} kg</div>
-            <div class="kpi-desc">Arruelas / Kerf</div>
-          </div>
-          <div class="kpi-card" style="border-top-color:{est_color}">
-            <div class="kpi-label">Estoque Gerado</div>
-            <div class="kpi-value" style="color:{est_color}">{r["t_kg_estoque"]:,.0f} kg</div>
-            <div class="kpi-desc">Sobra acima da demanda</div>
-          </div>
-          <div class="kpi-card" style="border-top-color:{falt_color}">
-            <div class="kpi-label">Falta em Pedidos</div>
-            <div class="kpi-value" style="color:{falt_color}">{r["t_kg_falta"]:,.0f} kg</div>
-            <div class="kpi-desc">Dívida com clientes</div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-        st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
-    
-        # ── PLANO DE CORTE (Cards) ────────────────────────────────────────────────
-        st.markdown('<div class="section-title">🔲 Plano de Corte — Esquemas Ativos</div>', unsafe_allow_html=True)
-    
-        cols_combo = st.columns(2)
-        for ci, setup in enumerate(r["plano"]):
-            with cols_combo[ci % 2]:
-                slu = setup["slu"]
-                if slu < -0.001:
-                    badge = f'<span class="slu-neg-badge">SLU {slu:.2f}% ⚠️ Avanço</span>'
-                elif slu > 1.3:
-                    badge = f'<span class="waste-badge-red">SLU {slu:.2f}%</span>'
-                elif slu > 1.0:
-                    badge = f'<span class="waste-badge-orange">SLU {slu:.2f}%</span>'
-                else:
-                    badge = f'<span class="waste-badge-green">SLU {slu:.2f}%</span>'
-    
-                # Mapa visual de corte
-                LU_NOM = r["LU_NOMINAL"]
-                waste_mm = round(LU_NOM - setup["l_real"], 2)
-                map_html = '<div class="cut-map">'
-                for k, w in enumerate(setup["widths"]):
-                    flex = w * setup["rollCounts"][k]
-                    map_html += f'<div class="cut-segment" style="flex:{flex}"><span class="cut-label">{int(w)}</span><span class="cut-count">{setup["rollCounts"][k]}x</span></div>'
-                waste_flex = max(abs(waste_mm), 5)
-                map_html += f'<div class="cut-segment-waste" style="flex:{waste_flex}"><span class="cut-waste-label">{waste_mm:+.1f}</span></div>'
-                map_html += '</div>'
-    
-                prog_w = min(max(abs(slu), 0), 100)
-                progress_html = f"""
-                <div class="progress-wrap">
-                  <div class="progress-label"><span>SLU</span><span style="color:#ef4444;">{slu:.2f}%</span></div>
-                  <div class="progress-track"><div class="progress-fill" style="width:{prog_w}%"></div></div>
-                </div>"""
-    
-                metrics_html = f"""
-                <div class="metric-row">
-                  <div class="metric-mini">
-                    <div class="metric-mini-label">Tiradas</div>
-                    <div class="metric-mini-value" style="color:white">{setup["runs"]}</div>
-                  </div>
-                  <div class="metric-mini">
-                    <div class="metric-mini-label">L. Real</div>
-                    <div class="metric-mini-value" style="color:#7c3aed">{setup["l_real"]:.1f}<span style="font-size:10px">mm</span></div>
-                  </div>
-                  <div class="metric-mini">
-                    <div class="metric-mini-label">Kg Setup</div>
-                    <div class="metric-mini-value" style="color:#3b82f6">{setup["kg_lreal"]:,.0f}<span style="font-size:10px">kg</span></div>
-                  </div>
-                  <div class="metric-mini">
-                    <div class="metric-mini-label">Jumbos</div>
-                    <div class="metric-mini-value" style="color:#94a3b8">{setup["jumbos_cheios"]}<span style="font-size:10px">+frac</span></div>
-                  </div>
-                </div>"""
-    
-                detail_rows = ""
-                for k, w in enumerate(setup["widths"]):
-                    kerf = setup["kerfs"][k]
-                    cnt  = setup["rollCounts"][k]
-                    detail_rows += f"""
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;">
-                      <div>
-                        <div style="font-size:11px;font-weight:900;color:#e2e8f0">{int(w)} mm</div>
-                        <div style="font-size:9px;color:#475569">Kerf: +{kerf:g}mm</div>
-                      </div>
-                      <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#7c3aed">{cnt}x</div>
-                      <div style="text-align:right">
-                        <div style="font-size:11px;font-weight:700;color:#94a3b8">{int(w+kerf)} mm bruto</div>
-                      </div>
-                    </div>"""
-    
-                jumbo_str = f"{setup['jumbos_cheios']} RJ(s) completo(s)"
-                if setup["runs_resto"] > 0:
-                    jumbo_str += f" + 1 fração ({setup['runs_resto']} tiradas)"
-    
-                st.markdown(f"""
-                <div class="combo-card">
-                  <div class="combo-header">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                      <span class="combo-id">{setup["id"]}</span>
-                      <span style="font-size:11px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">{setup["tipo"]}</span>
-                    </div>
-                    {badge}
-                  </div>
-                  {map_html}
-                  {progress_html}
-                  {metrics_html}
-                  <div style="margin-top:12px;padding:10px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:10px;color:#64748b;">
-                    🏭 Consumo Extrusão: <b style="color:#94a3b8">{jumbo_str}</b>
-                  </div>
-                  <div style="margin-top:16px;padding-top:16px;border-top:1px solid #1e293b;">
-                    <div style="font-size:9px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Larguras do Esquema</div>
-                    {detail_rows}
-                  </div>
-                </div>
-                """, unsafe_allow_html=True)
-    
-        st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
-    
-        # ── BALANÇO DE MASSA ──────────────────────────────────────────────────────
-        st.markdown('<div class="section-title">📦 Resumo de Atendimento — Balanço de Massa</div>', unsafe_allow_html=True)
-    
-        rows = []
-        for b in r["balanco"]:
-            infull = b["infull"]
-            if 98 <= infull <= 102:
-                badge_otif = f'<span class="otif-green">{infull:.1f}%</span>'
-            elif infull > 102:
-                badge_otif = f'<span class="otif-orange">{infull:.1f}%</span>'
-            else:
-                badge_otif = f'<span class="otif-red">{infull:.1f}%</span>'
-    
-            sobra_str = f'+{b["sobra_kg"]:,.0f}' if b["sobra_kg"] >= 0 else f'{b["sobra_kg"]:,.0f}'
-            rows.append({
-                "Largura": f'{int(b["largura"])} mm',
-                "Kerf": f'+{b["kerf"]:g}mm',
-                "Dem (un)": int(b["dem_rolos"]),
-                "Prod (un)": int(b["prod_rolos"]),
-                "In-Full": badge_otif,
-                "Dem (kg)": f'{b["kg_dem"]:,.0f}',
-                "Prod (kg)": f'{b["kg_prod"]:,.0f}',
-                "Sobra (kg)": sobra_str,
-            })
-    
-        df_bal = pd.DataFrame(rows)
-        st.write(df_bal.to_html(escape=False, index=False), unsafe_allow_html=True)
-    
-        st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
-    
-        # ── DIAGNÓSTICO DE REGRAS ─────────────────────────────────────────────────
-        st.markdown('<div class="section-title">⚙️ Diagnóstico de Regras de Negócio</div>', unsafe_allow_html=True)
-        pct_over = (r["OTIF_MAX"] - 1.0) * 100
-        str_setup = "BAIXA — Prioridade: Reduzir SLU" if r["L2_SETUPS"] < 3000 else "ALTA — Prioridade: OEE / Evitar paradas"
-        str_estoque = "FLEXÍVEL — Gera sobras para salvar SLU" if r["L3_OVER"] <= 5 else "RÍGIDA — Evita sobras a todo custo"
-        str_falta = "PERMITIDA — Pode entregar a menos" if r["CUSTO_FALTA"] <= 10 else "PROIBIDA — Força In-Full de 100%"
-        zeb_str = f"ZEBRADO ({r['S']})" if r["IS_ZEB"] else f"HOMOGÊNEO ({r['S']})"
-    
-        st.markdown(f"""
-        <div class="info-box">
-        <b>Máquina:</b> {r["M"]} | {r["T"]} | {r["S"]} | {r["C"]} &nbsp;|&nbsp;
-        <b>LU Nominal:</b> {r["LU_NOMINAL"]:.1f} mm → LU Max: {r["LU_MAX"]:.1f} mm &nbsp;|&nbsp;
-        <b>Pool minerado:</b> {r["pool_size"]} esquemas<br>
-        <b>Extrusão:</b> {zeb_str} &nbsp;|&nbsp;
-        <b>RJ máx/campanha:</b> {r["RUNS_MAX_POR_RJ"]} tiradas &nbsp;|&nbsp;
-        <b>Mín. tiradas/setup:</b> {r["MIN_RUNS_SETUP"]} ({r["SETUP_MIN_PCT"]}%)<br>
-        <b>Troca Faca:</b> {str_setup}<br>
-        <b>Estoque:</b> {str_estoque} — tolerância {pct_over:.1f}% overstock<br>
-        <b>Faltas:</b> {str_falta}
-        </div>
-        """, unsafe_allow_html=True)
-    
-        # ── FOOTER ────────────────────────────────────────────────────────────────
-        elapsed_str = f"{r.get('elapsed', 0):.2f}s"
-        st.markdown(f"""
-        <div style="text-align:center;padding:40px 0 20px;">
-          <p style="color:#1e293b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:4px;">
-            MAGNERA INDUSTRIAL ENGINE · V10.22 · Tempo de processamento: {elapsed_str}
-          </p>
-        </div>
-        """, unsafe_allow_html=True)
+
+    st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
+
+    # ── BALANÇO DE MASSA ──────────────────────────────────────────────────────
+    st.markdown('<div class="section-title">📦 Resumo de Atendimento — Balanço de Massa</div>', unsafe_allow_html=True)
+
+    rows = []
+    for b in r["balanco"]:
+        infull = b["infull"]
+        if 98 <= infull <= 102:
+            badge_otif = f'<span class="otif-green">{infull:.1f}%</span>'
+        elif infull > 102:
+            badge_otif = f'<span class="otif-orange">{infull:.1f}%</span>'
+        else:
+            badge_otif = f'<span class="otif-red">{infull:.1f}%</span>'
+
+        sobra_str = f'+{b["sobra_kg"]:,.0f}' if b["sobra_kg"] >= 0 else f'{b["sobra_kg"]:,.0f}'
+        rows.append({
+            "Largura": f'{int(b["largura"])} mm',
+            "Kerf": f'+{b["kerf"]:g}mm',
+            "Dem (un)": int(b["dem_rolos"]),
+            "Prod (un)": int(b["prod_rolos"]),
+            "In-Full": badge_otif,
+            "Dem (kg)": f'{b["kg_dem"]:,.0f}',
+            "Prod (kg)": f'{b["kg_prod"]:,.0f}',
+            "Sobra (kg)": sobra_str,
+        })
+
+    df_bal = pd.DataFrame(rows)
+    st.write(df_bal.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+    st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
+
+    # ── DIAGNÓSTICO DE REGRAS ─────────────────────────────────────────────────
+    st.markdown('<div class="section-title">⚙️ Diagnóstico de Regras de Negócio</div>', unsafe_allow_html=True)
+    pct_over = (r["OTIF_MAX"] - 1.0) * 100
+    str_setup = "BAIXA — Prioridade: Reduzir SLU" if r["L2_SETUPS"] < 3000 else "ALTA — Prioridade: OEE / Evitar paradas"
+    str_estoque = "FLEXÍVEL — Gera sobras para salvar SLU" if r["L3_OVER"] <= 5 else "RÍGIDA — Evita sobras a todo custo"
+    str_falta = "PERMITIDA — Pode entregar a menos" if r["CUSTO_FALTA"] <= 10 else "PROIBIDA — Força In-Full de 100%"
+    zeb_str = f"ZEBRADO ({r['S']})" if r["IS_ZEB"] else f"HOMOGÊNEO ({r['S']})"
+
+    st.markdown(f"""
+    <div class="info-box">
+    <b>Máquina:</b> {r["M"]} | {r["T"]} | {r["S"]} | {r["C"]} &nbsp;|&nbsp;
+    <b>LU Nominal:</b> {r["LU_NOMINAL"]:.1f} mm → LU Max: {r["LU_MAX"]:.1f} mm &nbsp;|&nbsp;
+    <b>Pool minerado:</b> {r["pool_size"]} esquemas<br>
+    <b>Extrusão:</b> {zeb_str} &nbsp;|&nbsp;
+    <b>RJ máx/campanha:</b> {r["RUNS_MAX_POR_RJ"]} tiradas &nbsp;|&nbsp;
+    <b>Mín. tiradas/setup:</b> {r["MIN_RUNS_SETUP"]} ({r["SETUP_MIN_PCT"]}%)<br>
+    <b>Troca Faca:</b> {str_setup}<br>
+    <b>Estoque:</b> {str_estoque} — tolerância {pct_over:.1f}% overstock<br>
+    <b>Faltas:</b> {str_falta}
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── FOOTER ────────────────────────────────────────────────────────────────
+    elapsed_str = f"{r.get('elapsed', 0):.2f}s"
+    st.markdown(f"""
+    <div style="text-align:center;padding:40px 0 20px;">
+      <p style="color:#1e293b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:4px;">
+        MAGNERA INDUSTRIAL ENGINE · V10.22 · Tempo de processamento: {elapsed_str}
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
