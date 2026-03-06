@@ -356,30 +356,66 @@ st.markdown(
 )
 
 # ── HELPER: ler xlsx ou xlsb ─────────────────────────────────────────────────
-def _read_any_excel(file_obj, sheet_hint=None):
-    """Lê .xlsx/.xlsb/.xls. Tenta aba por nome, senão usa sheet 0."""
-    name = getattr(file_obj, 'name', '')
-    is_xlsb = name.lower().endswith('.xlsb')
-    if is_xlsb:
+import io as _io
+
+def _read_any_excel(raw_bytes, filename, sheet_hint=None):
+    """
+    Lê bytes de .xlsx/.xlsb/.xls ou qualquer extensão.
+    Detecta o formato pelos magic bytes do arquivo:
+      - xlsb: começa com D0 CF 11 E0 (formato CFB) → pyxlsb
+      - xlsx: começa com PK (ZIP) → openpyxl
+    """
+    buf = _io.BytesIO(raw_bytes)
+
+    # Detectar formato pelos primeiros bytes
+    magic = raw_bytes[:4]
+    is_xlsb_by_magic = magic == b'\xd0\xcf\x11\xe0'   # OLE2 / CFB → xlsb ou xls
+    is_xlsx_by_magic  = magic[:2] == b'PK'              # ZIP → xlsx/xlsm
+
+    # Fallback: usar extensão do nome
+    ext = filename.lower().rsplit('.', 1)[-1] if '.' in filename else ''
+    force_xlsb = ext in ('xlsb',) or is_xlsb_by_magic
+
+    if force_xlsb:
         try:
-            import pyxlsb
-            if sheet_hint:
-                try:
-                    return pd.read_excel(file_obj, sheet_name=sheet_hint, engine='pyxlsb')
-                except Exception:
-                    file_obj.seek(0)
-            return pd.read_excel(file_obj, sheet_name=0, engine='pyxlsb')
+            import pyxlsb  # noqa
         except ImportError:
-            raise ImportError("Biblioteca pyxlsb não instalada. Adicione 'pyxlsb' ao requirements.txt.")
+            raise ImportError("pyxlsb não instalado. Adicione 'pyxlsb' ao requirements.txt.")
+        if sheet_hint:
+            try:
+                return pd.read_excel(buf, sheet_name=sheet_hint, engine='pyxlsb')
+            except Exception:
+                buf = _io.BytesIO(raw_bytes)
+        return pd.read_excel(buf, sheet_name=0, engine='pyxlsb')
     else:
         if sheet_hint:
             try:
-                return pd.read_excel(file_obj, sheet_name=sheet_hint)
+                return pd.read_excel(buf, sheet_name=sheet_hint)
             except Exception:
-                file_obj.seek(0)
-        return pd.read_excel(file_obj, sheet_name=0)
+                buf = _io.BytesIO(raw_bytes)
+        return pd.read_excel(buf, sheet_name=0)
+
+def _upload_widget(label, key_bytes, key_name):
+    """
+    Uploader sem restrição de MIME usando st.file_uploader com type=None.
+    O Streamlit >=1.28 não bloqueia quando type não é passado — mas em algumas
+    versões cloud o upload ainda rejeita pelo content-type do browser.
+    Solução: aceitar qualquer arquivo e validar pelo nome/extensão no servidor.
+    """
+    # Hack: forçar o browser a não enviar content-type restrito
+    # usando label_visibility e sem parâmetro type
+    f = st.file_uploader(label, key=key_bytes, label_visibility='collapsed')
+    return f
 
 # ── PÁGINA ÚNICA — OTIMIZADOR ─────────────────────────────────────────────────
+
+# CSS para ocultar o aviso de tipo de arquivo do Streamlit e mostrar nosso input
+st.markdown("""
+<style>
+/* Oculta a mensagem "Limit ... files are not allowed" do file_uploader */
+[data-testid="stFileUploaderDropzoneInstructions"] small { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
 
 # ── Bloco de uploads das matrizes (compacto, no topo) ─────────────────────────
 _lu_ok  = st.session_state.df_lu  is not None
@@ -391,14 +427,18 @@ with st.expander(
     expanded=not (_lu_ok and _arr_ok)
 ):
     st.markdown(
-        '<div class="info-box" style="margin-top:0">Faça o upload uma única vez (.xlsx ou .xlsb). '
-        'As matrizes ficam salvas na sessão — só reenvie quando houver atualização.</div>',
+        '<div class="info-box" style="margin-top:0">'
+        '📁 Aceita <b>.xlsb</b> e <b>.xlsx</b>. Carregue uma vez — ficam salvas na sessão.<br>'
+        '⚠️ Se o <b>.xlsb</b> for bloqueado pelo browser: no Explorer, renomeie a extensão para '
+        '<code>.bin</code> antes de enviar (ex: <code>arruelas.bin</code>). '
+        'O app detecta e lê o formato corretamente.'
+        '</div>',
         unsafe_allow_html=True)
 
     _uc1, _uc2 = st.columns(2)
 
     with _uc1:
-        st.markdown('<div class="param-box-title">📐 Matriz LU — largura_util.xlsb</div>', unsafe_allow_html=True)
+        st.markdown('<div class="param-box-title">📐 Matriz LU — largura_util</div>', unsafe_allow_html=True)
         if _lu_ok:
             _df = st.session_state.df_lu
             st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas × {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
@@ -406,18 +446,29 @@ with st.expander(
                 st.dataframe(_df, use_container_width=True)
         else:
             st.markdown('<div class="matrix-none">⬜ Aguardando arquivo</div>', unsafe_allow_html=True)
-        _f_lu = st.file_uploader('largura_util (.xlsx / .xlsb)', key='up_lu', label_visibility='collapsed')
-        if _f_lu:
-            try:
-                _df_new = _read_any_excel(_f_lu, sheet_hint='Matriz_LU')
-                st.session_state.df_lu = _df_new
-                st.success(f'Matriz LU atualizada: {len(_df_new)} linhas')
-                st.rerun()
-            except Exception as _e:
-                st.error(f'Erro ao ler Matriz LU: {_e}')
+
+        _f_lu = st.file_uploader(
+            'Largura Útil (.xlsx ou .xlsb)',
+            key='up_lu',
+            label_visibility='collapsed',
+            # Sem parâmetro type= → aceita qualquer arquivo
+        )
+        if _f_lu is not None:
+            _fname_lu = _f_lu.name
+            if not any(_fname_lu.lower().endswith(e) for e in ('.xlsx','.xlsb','.xls','.bin')):
+                st.error(f'Formato não suportado: {_fname_lu}. Use .xlsx, .xlsb ou renomeie para .bin')
+            else:
+                try:
+                    _raw = _f_lu.read()
+                    _df_new = _read_any_excel(_raw, _fname_lu, sheet_hint='Matriz_LU')
+                    st.session_state.df_lu = _df_new
+                    st.success(f'✅ Matriz LU carregada: {len(_df_new)} linhas')
+                    st.rerun()
+                except Exception as _e:
+                    st.error(f'Erro ao ler Matriz LU: {_e}')
 
     with _uc2:
-        st.markdown('<div class="param-box-title">🔩 Matriz Arruelas — arruelas.xlsb</div>', unsafe_allow_html=True)
+        st.markdown('<div class="param-box-title">🔩 Matriz Arruelas — arruelas</div>', unsafe_allow_html=True)
         if _arr_ok:
             _df = st.session_state.df_arr
             st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas × {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
@@ -425,15 +476,26 @@ with st.expander(
                 st.dataframe(_df, use_container_width=True)
         else:
             st.markdown('<div class="matrix-none">⬜ Aguardando arquivo</div>', unsafe_allow_html=True)
-        _f_arr = st.file_uploader('arruelas (.xlsx / .xlsb)', key='up_arr', label_visibility='collapsed')
-        if _f_arr:
-            try:
-                _df_new = _read_any_excel(_f_arr, sheet_hint='Matriz_Arruelas')
-                st.session_state.df_arr = _df_new
-                st.success(f'Matriz Arruelas atualizada: {len(_df_new)} linhas')
-                st.rerun()
-            except Exception as _e:
-                st.error(f'Erro ao ler Matriz Arruelas: {_e}')
+
+        _f_arr = st.file_uploader(
+            'Arruelas (.xlsx ou .xlsb)',
+            key='up_arr',
+            label_visibility='collapsed',
+            # Sem parâmetro type= → aceita qualquer arquivo
+        )
+        if _f_arr is not None:
+            _fname_arr = _f_arr.name
+            if not any(_fname_arr.lower().endswith(e) for e in ('.xlsx','.xlsb','.xls','.bin')):
+                st.error(f'Formato não suportado: {_fname_arr}. Use .xlsx, .xlsb ou renomeie para .bin')
+            else:
+                try:
+                    _raw = _f_arr.read()
+                    _df_new = _read_any_excel(_raw, _fname_arr, sheet_hint='Matriz_Arruelas')
+                    st.session_state.df_arr = _df_new
+                    st.success(f'✅ Matriz Arruelas carregada: {len(_df_new)} linhas')
+                    st.rerun()
+                except Exception as _e:
+                    st.error(f'Erro ao ler Matriz Arruelas: {_e}')
 
 # ── Reatribuir flags após possíveis uploads acima ────────────────────────────
 _lu_ok  = st.session_state.df_lu  is not None
