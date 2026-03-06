@@ -594,7 +594,7 @@ with _cm1:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
     st.markdown('<div class="param-box-title">Material</div>', unsafe_allow_html=True)
     _mc1, _mc2 = st.columns(2)
-    grammage      = _mc1.number_input('Gramatura (g/m²)', value=0.0, step=0.5,   format='%.1f', min_value=1.0)
+    grammage      = _mc1.number_input('Gramatura (g/m²)', value=10.0, step=0.5,   format='%.1f', min_value=1.0)
     linear_meters = _mc2.number_input('Metragem (m)',     value=0, step=100,  min_value=100)
     st.markdown('</div>', unsafe_allow_html=True)
 with _cm2:
