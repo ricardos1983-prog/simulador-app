@@ -464,62 +464,66 @@ with st.expander(
     _uc1, _uc2 = st.columns(2)
 
     with _uc1:
-        st.markdown('<div class="param-box-title">📐 Matriz LU — largura_util</div>', unsafe_allow_html=True)
+        st.markdown('<div class="param-box-title">Matriz LU — largura_util</div>', unsafe_allow_html=True)
         if _lu_ok:
             _df = st.session_state.df_lu
-            st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas × {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas x {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
             with st.expander('Visualizar'):
                 st.dataframe(_df.head(200), use_container_width=True)
-                st.caption(f"Exibindo 200 de {len(_df)} linhas")
+                st.caption(f'Exibindo 200 de {len(_df)} linhas')
         else:
-            st.markdown('<div class="matrix-none">⬜ Aguardando arquivo</div>', unsafe_allow_html=True)
-
-        _f_lu = st.file_uploader('Largura Útil (.xlsx ou .xlsb)', key='up_lu', label_visibility='collapsed')
-        if _f_lu is not None:
-            _fname_lu = _f_lu.name
-            if not any(_fname_lu.lower().endswith(e) for e in ('.xlsx','.xlsb','.xls','.bin')):
-                st.error(f'Formato não suportado: {_fname_lu}')
-            else:
-                with st.spinner('⏳ Lendo Matriz LU...'):
-                    try:
-                        _raw = _f_lu.read()
-                        _df_new = _read_any_excel(_raw, _fname_lu, sheet_hint='Matriz_LU')
-                        st.session_state.df_lu = _df_new
-                        _save_cache("df_lu_active", _df_new)
-                        st.success(f'✅ {len(_df_new)} linhas carregadas')
-                        st.rerun()
-                    except Exception as _e:
-                        st.error(f'Erro: {_e}')
+            st.markdown('<div class="matrix-none">Aguardando arquivo</div>', unsafe_allow_html=True)
+        _f_lu = st.file_uploader('Largura Util (.xlsx ou .xlsb)', key='up_lu', label_visibility='collapsed')
 
     with _uc2:
-        st.markdown('<div class="param-box-title">🔩 Matriz Arruelas — arruelas</div>', unsafe_allow_html=True)
+        st.markdown('<div class="param-box-title">Matriz Arruelas — arruelas</div>', unsafe_allow_html=True)
         if _arr_ok:
             _df = st.session_state.df_arr
-            st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas × {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas x {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
             with st.expander('Visualizar'):
                 st.dataframe(_df.head(200), use_container_width=True)
-                st.caption(f"Exibindo 200 de {len(_df)} linhas")
+                st.caption(f'Exibindo 200 de {len(_df)} linhas')
         else:
-            st.markdown('<div class="matrix-none">⬜ Aguardando arquivo</div>', unsafe_allow_html=True)
-
+            st.markdown('<div class="matrix-none">Aguardando arquivo</div>', unsafe_allow_html=True)
         _f_arr = st.file_uploader('Arruelas (.xlsx ou .xlsb)', key='up_arr', label_visibility='collapsed')
-        if _f_arr is not None:
-            _fname_arr = _f_arr.name
-            if not any(_fname_arr.lower().endswith(e) for e in ('.xlsx','.xlsb','.xls','.bin')):
-                st.error(f'Formato não suportado: {_fname_arr}')
-            else:
-                with st.spinner('⏳ Lendo Matriz Arruelas...'):
-                    try:
-                        _raw = _f_arr.read()
-                        _df_new = _read_any_excel(_raw, _fname_arr, sheet_hint='Matriz_Arruelas')
-                        st.session_state.df_arr = _df_new
-                        _save_cache("df_arr_active", _df_new)
-                        st.success(f'✅ {len(_df_new)} linhas carregadas')
-                        st.rerun()
-                    except Exception as _e:
-                        st.error(f'Erro: {_e}')
 
-# ── Reatribuir flags após possíveis uploads acima ────────────────────────────
+# Processar uploads FORA do expander - evita conflito rerun dentro de contextos aninhados
+if _f_lu is not None:
+    _fname_lu = _f_lu.name
+    if not any(_fname_lu.lower().endswith(e) for e in ('.xlsx','.xlsb','.xls','.bin')):
+        st.error(f'Formato nao suportado: {_fname_lu}')
+    else:
+        _raw_lu = _f_lu.read()
+        _h_lu = _hash_bytes(_raw_lu)
+        if st.session_state.get('_last_lu_hash') != _h_lu:
+            with st.spinner('Lendo Matriz LU...'):
+                try:
+                    _df_new = _read_any_excel(_raw_lu, _fname_lu, sheet_hint='Matriz_LU')
+                    st.session_state.df_lu = _df_new
+                    st.session_state['_last_lu_hash'] = _h_lu
+                    _save_cache('df_lu_active', _df_new)
+                    st.rerun()
+                except Exception as _e:
+                    st.error(f'Erro ao ler Matriz LU: {_e}')
+
+if _f_arr is not None:
+    _fname_arr = _f_arr.name
+    if not any(_fname_arr.lower().endswith(e) for e in ('.xlsx','.xlsb','.xls','.bin')):
+        st.error(f'Formato nao suportado: {_fname_arr}')
+    else:
+        _raw_arr = _f_arr.read()
+        _h_arr = _hash_bytes(_raw_arr)
+        if st.session_state.get('_last_arr_hash') != _h_arr:
+            with st.spinner('Lendo Matriz Arruelas... (arquivo grande, aguarde)'):
+                try:
+                    _df_new = _read_any_excel(_raw_arr, _fname_arr, sheet_hint='Matriz_Arruelas')
+                    st.session_state.df_arr = _df_new
+                    st.session_state['_last_arr_hash'] = _h_arr
+                    _save_cache('df_arr_active', _df_new)
+                    st.rerun()
+                except Exception as _e:
+                    st.error(f'Erro ao ler Matriz Arruelas: {_e}')
+
 _lu_ok  = st.session_state.df_lu  is not None
 _arr_ok = st.session_state.df_arr is not None
 
