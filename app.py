@@ -531,8 +531,8 @@ with st.expander(
             _df = st.session_state.df_arr
             st.markdown(f'<div class="matrix-ok">✅ Carregada — {len(_df)} linhas x {len(_df.columns)} colunas</div>', unsafe_allow_html=True)
             with st.expander('Visualizar'):
-                st.dataframe(_df.head(100), use_container_width=True)
-                st.caption(f'Exibindo 100 de {len(_df)} linhas')
+                st.dataframe(_df.head(200), use_container_width=True)
+                st.caption(f'Exibindo 200 de {len(_df)} linhas')
         else:
             st.markdown('<div class="matrix-none">Aguardando arquivo</div>', unsafe_allow_html=True)
         _f_arr = st.file_uploader('Arruelas (.xlsx ou .xlsb)', key='up_arr', label_visibility='collapsed')
