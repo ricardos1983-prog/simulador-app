@@ -639,30 +639,33 @@ bonus_eng     = _cp5.number_input('Bônus Engenharia',  value=15.0,   step=1.0)
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
-# Diagnóstico de Regras — exibido após otimização
-if st.session_state.simulated and st.session_state.result:
-    _r = st.session_state.result
-    _pct_over    = (_r['OTIF_MAX'] - 1.0) * 100
-    _str_setup   = 'BAIXA - Prioridade: Reduzir SLU' if _r['L2_SETUPS'] < 3000 else 'ALTA - Prioridade: OEE / Evitar paradas'
-    _str_estoque = 'FLEXIVEL - Gera sobras para salvar SLU' if _r['L3_OVER'] <= 5 else 'RIGIDA - Evita sobras a todo custo'
-    _str_falta   = 'PERMITIDA - Pode entregar a menos' if _r['CUSTO_FALTA'] <= 10 else 'PROIBIDA - Forca In-Full de 100%'
-    _zeb_str     = f"ZEBRADO ({_r['S']})" if _r['IS_ZEB'] else f"HOMOGENEO ({_r['S']})"
-    st.markdown('<div class="section-title">Diagnostico de Regras de Negocio</div>', unsafe_allow_html=True)
-    _diag = (
-        '<div class="info-box">'
-        f'<b>Maquina:</b> {_r["M"]} | {_r["T"]} | {_r["S"]} | {_r["C"]} &nbsp;|&nbsp;'
-        f'<b>LU Nominal:</b> {_r["LU_NOMINAL"]:.1f}mm &rarr; LU Max: {_r["LU_MAX"]:.1f}mm &nbsp;|&nbsp;'
-        f'<b>Pool:</b> {_r["pool_size"]} esquemas<br>'
-        f'<b>Extrusao:</b> {_zeb_str} &nbsp;|&nbsp;'
-        f'<b>RJ max/campanha:</b> {_r["RUNS_MAX_POR_RJ"]} tiradas &nbsp;|&nbsp;'
-        f'<b>Min tiradas/setup:</b> {_r["MIN_RUNS_SETUP"]} ({_r["SETUP_MIN_PCT"]}%)<br>'
-        f'<b>Troca Faca:</b> {_str_setup}<br>'
-        f'<b>Estoque:</b> {_str_estoque} - tolerancia {_pct_over:.1f}% overstock<br>'
-        f'<b>Faltas:</b> {_str_falta}'
-        '</div>'
-    )
-    st.markdown(_diag, unsafe_allow_html=True)
-    st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
+# ── DIAGNÓSTICO DE REGRAS (sempre visível, usa inputs atuais) ────────────────
+st.markdown('<div class="section-title">⚙️ Diagnóstico de Regras de Negócio</div>', unsafe_allow_html=True)
+_dstr_setup   = 'BAIXA — Prioridade: Reduzir SLU' if custo_setup < 3000 else 'ALTA — Prioridade: OEE / Evitar paradas'
+_dstr_estoque = 'FLEXÍVEL — Gera sobras para salvar SLU' if custo_estoque <= 5 else 'RÍGIDA — Evita sobras a todo custo'
+_dstr_falta   = 'PERMITIDA — Pode entregar a menos' if custo_falta <= 10 else 'PROIBIDA — Força In-Full de 100%'
+_dpct_over    = meta_otif - 100.0
+_dzeb         = surfactant == 'ZEB'
+_dextrusao    = f'ZEBRADO ({surfactant})' if _dzeb else f'HOMOGÊNEO ({surfactant})'
+_diag_html = (
+    '<div class="info-box">'
+    f'<b>Máquina:</b> {machine} | {technology} | {surfactant} | {calender} &nbsp;|&nbsp;'
+    f'<b>Fator LU Min:</b> {fator_lu_min:.2f} &nbsp;|&nbsp;'
+    f'<b>Tolerância LU:</b> {tol_lu:.2f}%<br>'
+    f'<b>Extrusão:</b> {_dextrusao} &nbsp;|&nbsp;'
+    f'<b>Max Facas:</b> {max_facas} &nbsp;|&nbsp;'
+    f'<b>Max Larg/Esquema:</b> {max_larg_esq} &nbsp;|&nbsp;'
+    f'<b>Dif. Mín. Larg:</b> {diff_limit:.0f}mm<br>'
+    f'<b>Meta OTIF:</b> {meta_otif:.1f}% (tolerância overstock: {_dpct_over:.1f}%) &nbsp;|&nbsp;'
+    f'<b>Max Setups:</b> {max_setups} &nbsp;|&nbsp;'
+    f'<b>Ocup. Mín. Eixo:</b> {setup_min_pct:.1f}%<br>'
+    f'<b>Troca Faca:</b> {_dstr_setup}<br>'
+    f'<b>Estoque:</b> {_dstr_estoque}<br>'
+    f'<b>Faltas:</b> {_dstr_falta}'
+    '</div>'
+)
+st.markdown(_diag_html, unsafe_allow_html=True)
+st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
 st.markdown('<div class="section-title">📋 Demandas de Venda</div>', unsafe_allow_html=True)
 
