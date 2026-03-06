@@ -803,43 +803,49 @@ if st.session_state.simulated and st.session_state.result:
             for k, w in enumerate(setup["widths"]):
                 kerf = setup["kerfs"][k]
                 cnt  = setup["rollCounts"][k]
-                detail_rows += f"""
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;">
-                  <div>
-                    <div style="font-size:11px;font-weight:900;color:#e2e8f0">{int(w)} mm</div>
-                    <div style="font-size:9px;color:#475569">Kerf: +{kerf:g}mm</div>
-                  </div>
-                  <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#7c3aed">{cnt}x</div>
-                  <div style="text-align:right">
-                    <div style="font-size:11px;font-weight:700;color:#94a3b8">{int(w+kerf)} mm bruto</div>
-                  </div>
-                </div>"""
+                detail_rows += (
+                    '<div style="display:flex;justify-content:space-between;align-items:center;'
+                    'padding:10px 12px;background:#0f172a;border:1px solid #1e293b;'
+                    'border-radius:8px;margin-bottom:6px;">'
+                    '<div>'
+                    f'<div style="font-size:11px;font-weight:900;color:#e2e8f0">{int(w)} mm</div>'
+                    f'<div style="font-size:9px;color:#475569">Kerf: +{kerf:g}mm</div>'
+                    '</div>'
+                    f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;font-weight:700;color:#7c3aed">{cnt}x</div>'
+                    '<div style="text-align:right">'
+                    f'<div style="font-size:11px;font-weight:700;color:#94a3b8">{int(w+kerf)} mm bruto</div>'
+                    '</div>'
+                    '</div>'
+                )
 
             jumbo_str = f"{setup['jumbos_cheios']} RJ(s) completo(s)"
             if setup["runs_resto"] > 0:
                 jumbo_str += f" + 1 fração ({setup['runs_resto']} tiradas)"
 
-            st.markdown(f"""
-            <div class="combo-card">
-              <div class="combo-header">
-                <div style="display:flex;align-items:center;gap:10px;">
-                  <span class="combo-id">{setup["id"]}</span>
-                  <span style="font-size:11px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">{setup["tipo"]}</span>
-                </div>
-                {badge}
-              </div>
-              {map_html}
-              {progress_html}
-              {metrics_html}
-              <div style="margin-top:12px;padding:10px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:10px;color:#64748b;">
-                🏭 Consumo Extrusão: <b style="color:#94a3b8">{jumbo_str}</b>
-              </div>
-              <div style="margin-top:16px;padding-top:16px;border-top:1px solid #1e293b;">
-                <div style="font-size:9px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Larguras do Esquema</div>
-                {detail_rows}
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
+            _sid   = setup["id"]
+            _stipo = setup["tipo"]
+            _card_html = (
+                '<div class="combo-card">'
+                '<div class="combo-header">'
+                '<div style="display:flex;align-items:center;gap:10px;">'
+                f'<span class="combo-id">{_sid}</span>'
+                f'<span style="font-size:11px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;">{_stipo}</span>'
+                '</div>'
+                f'{badge}'
+                '</div>'
+                f'{map_html}'
+                f'{progress_html}'
+                f'{metrics_html}'
+                '<div style="margin-top:12px;padding:10px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;font-size:10px;color:#64748b;">'
+                f'🏭 Consumo Extrusão: <b style="color:#94a3b8">{jumbo_str}</b>'
+                '</div>'
+                '<div style="margin-top:16px;padding-top:16px;border-top:1px solid #1e293b;">'
+                '<div style="font-size:9px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Larguras do Esquema</div>'
+                f'{detail_rows}'
+                '</div>'
+                '</div>'
+            )
+            st.markdown(_card_html, unsafe_allow_html=True)
 
     st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
