@@ -614,7 +614,7 @@ with _rc1:
     st.markdown('<div class="param-box">', unsafe_allow_html=True)
     st.markdown('<div class="param-box-title">Configuração Rebobinadeira</div>', unsafe_allow_html=True)
     _rr1, _rr2, _rr3 = st.columns(3)
-    max_facas    = _rr1.number_input('Qtde Facas',           value=8,    step=1,   min_value=1)
+    max_facas    = _rr1.number_input('Qtde Facas',           value=40,    step=1,   min_value=1)
     max_larg_esq = _rr2.number_input('Max Larguras/Esquema', value=2,    step=1,   min_value=1, max_value=5)
     diff_limit   = _rr3.number_input('Dif. Mín. Larg. (mm)', value=30.0, step=5.0, min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
