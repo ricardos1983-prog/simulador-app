@@ -573,7 +573,7 @@ with _rc2:
     _rs1, _rs2, _rs3 = st.columns(3)
     meta_otif     = _rs1.number_input('Meta OTIF (%)',       value=101.0, step=0.5,  format='%.1f', min_value=100.0, max_value=115.0)
     max_setups    = _rs2.number_input('Max Setups',          value=10,    step=1,    min_value=1)
-    setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=0.70,  step=1.0,  format='%.1f', min_value=0.0)
+    setup_min_pct = _rs3.number_input('Ocup. Mín. Eixo (%)', value=70.0,  step=1.0,  format='%.1f', min_value=0.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="param-box">', unsafe_allow_html=True)
