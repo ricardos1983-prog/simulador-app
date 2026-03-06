@@ -927,11 +927,15 @@ if st.session_state.simulated and st.session_state.result:
     st.markdown('<div class="orange-divider"></div>', unsafe_allow_html=True)
 
     # ── BALANÇO DE MASSA ──────────────────────────────────────────────────────
-    st.markdown('<div class="section-title">Resumo de Atendimento — Balanço de Massa</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Resumo de Atendimento — Balanço de Massa</div>', unsafe_allow_html=True)
 
+if "balanco" not in r or not r["balanco"]:
+    st.warning("Nenhum dado de balanço de massa foi gerado.")
+else:
     rows = []
     for b in r["balanco"]:
-        infull = b["infull"]
+        infull = float(b.get("infull", 0))
+
         if 98 <= infull <= 102:
             badge_otif = f'<span class="otif-green">{infull:.1f}%</span>'
         elif infull > 102:
@@ -939,21 +943,23 @@ if st.session_state.simulated and st.session_state.result:
         else:
             badge_otif = f'<span class="otif-red">{infull:.1f}%</span>'
 
-        sobra_str = f'+{b["sobra_kg"]:,.0f}' if b["sobra_kg"] >= 0 else f'{b["sobra_kg"]:,.0f}'
+        sobra = float(b.get("sobra_kg", 0))
+        sobra_str = f'+{sobra:,.0f}' if sobra >= 0 else f'{sobra:,.0f}'
+
         rows.append({
-            "Largura": f'{int(b["largura"])} mm',
-            "Kerf": f'+{b["kerf"]:g}mm',
-            "Dem (un)": int(b["dem_rolos"]),
-            "Prod (un)": int(b["prod_rolos"]),
+            "Largura": f'{int(float(b.get("largura", 0)))} mm',
+            "Kerf": f'+{float(b.get("kerf", 0)):g}mm',
+            "Dem (un)": int(float(b.get("dem_rolos", 0))),
+            "Prod (un)": int(float(b.get("prod_rolos", 0))),
             "In-Full": badge_otif,
-            "Dem (kg)": f'{b["kg_dem"]:,.0f}',
-            "Prod (kg)": f'{b["kg_prod"]:,.0f}',
+            "Dem (kg)": f'{float(b.get("kg_dem", 0)):,.0f}',
+            "Prod (kg)": f'{float(b.get("kg_prod", 0)):,.0f}',
             "Sobra (kg)": sobra_str,
         })
 
     df_bal = pd.DataFrame(rows)
-    st.write(df_bal.to_html(escape=False, index=False), unsafe_allow_html=True)
-
+    st.markdown(df_bal.to_html(escape=False, index=False), unsafe_allow_html=True)
+   
     # ── FOOTER ────────────────────────────────────────────────────────────────
     elapsed_str = f"{r.get('elapsed', 0):.2f}s"
     st.markdown(
